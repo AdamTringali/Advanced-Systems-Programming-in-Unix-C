@@ -1,1 +1,3 @@
-Empty template and README for HW1
+CSE-376 (Spring 2020) Homework Assignment #1
+
+filesec [-devh] [-D DBGVAL] [-p PASSFILE] infile outfile

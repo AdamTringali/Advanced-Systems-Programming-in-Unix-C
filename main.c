@@ -60,7 +60,8 @@ int main(int argc, char** argv)
   void *buf = NULL, *preservebuf = NULL;
   char *infile = NULL, *outfile = NULL, *password = NULL;
   int fd1 = -1, fd2 = -1, fd3 = -1, fd4 = -1, retval = 0;
-  int decrypt = -1, encrypt = -1;
+  int infile_stdin = -1, outfile_stdin = -1;
+  int decrypt = -1, encrypt = -1, passfile = -1;
   int debug1 = -1, debug2 = -1, debug4 = -1, debug16 = -1, debug32 = -1;
   int opt;
   extern char *optarg;
@@ -129,9 +130,9 @@ int main(int argc, char** argv)
       if(strcmp("-", argv[j]) == 0)
       {
         if(optind == j)
-          fd1 = 0;
+          infile_stdin = 0;
         else
-          fd2 = 0;
+          outfile_stdin = 0;
       }
       else 
       {
@@ -149,7 +150,8 @@ int main(int argc, char** argv)
     goto out;
   }
 
-  debug("Infile: %s Outfile: %s\n", infile, outfile);
+
+  debug("Infile: %s Outfile: %s\n", infile ? infile : "STDIN", outfile ? outfile : "STDOUT");
 
   if(encrypt == 1)
     debug("Encrypt with specified user pw\n");
@@ -160,16 +162,26 @@ int main(int argc, char** argv)
   if(password)
   {
     printf("reading from passfile\n");
+    passfile = 1;
   }
-  else
+ /*  else{
     password = getpass("Enter password:"); 
-  //password = "abc";
+    debug("password: %s\n", password);
+  } */
 
-  if(fd1 == 0)
+  /* if(fd1 == 0)
+  {
     debug("Reading input from stdio\n");
-  
+    char *filename;
+    filename = (char *)malloc(200 * sizeof(char));
+    int r = read(STDIN_FILENO, filename, 200);
+
+    debug("rval: %d, input filename: %s\n",r, filename);
+
+    free(filename);
+  }
   if(fd2 == 0)
-    debug("reading output from stdio\n");
+    debug("reading output from stdio\n"); */
 
   // alloc a buffer
   buf = malloc(bufsize);
@@ -189,19 +201,25 @@ int main(int argc, char** argv)
   /* ################## opening files ########################### */
 
   // open infile
-  fd1 = open(infile, O_RDONLY);
-  if (fd1 < 0) {
-    perror(infile);
-    retval = 2; // indicates to caller that open infile failed
-    goto out;
+  if(infile_stdin == -1)//not reading from stdin
+  {
+    fd1 = open(infile, O_RDONLY);
+    if (fd1 < 0) {
+      perror(infile);
+      retval = 2; // indicates to caller that open infile failed
+      goto out;
+    }
   }
 
   // open outfile
-  fd2 = open(outfile, O_RDWR);
-  if (fd2 < 0) {
-    perror(outfile);
-    retval = 3; // indicates to caller that open outfile failed
-    goto out;
+  if(outfile_stdin == -1) //not reading from stdin
+ { 
+    fd2 = open(outfile, O_RDWR|O_CREAT, 00700);
+    if (fd2 < 0) {
+      perror(outfile);
+      retval = 3; // indicates to caller that open outfile failed
+      goto out;
+    }
   }
 
   //create/open tempfile
@@ -212,7 +230,7 @@ int main(int argc, char** argv)
     goto out;
   }
 
-  if(password)
+  if(passfile == 1)
   {
     debug("opening passfile\n");
     //open passfile
@@ -228,16 +246,22 @@ int main(int argc, char** argv)
   int blocksz;
   int check_partial;
   /* ################## passfile read ########################### */
-   while((blocksz = read(fd4, buf, len)) > 0)
-  {
-     if (blocksz < 0) { // failed
-          debug("password read failed blocksz: %d\n", blocksz);
-          retval = 21;
-          goto out;
-        }     
-  } 
-
-  debug("password: %s\n", buf );
+  if(passfile == 1) 
+  { 
+    while((blocksz = read(fd4, buf, len)) > 0)
+    {
+      if (blocksz < 0) { // failed
+        debug("password read failed blocksz: %d\n", blocksz);
+        retval = 21;
+        goto out;
+      }     
+    } 
+    char *c = strchr(buf, '\n');
+    if (c){
+      debug("newline character. removing\n");
+      *c = 0;
+    }
+  }
 
   free(buf);
   buf = malloc(bufsize);
@@ -247,7 +271,8 @@ int main(int argc, char** argv)
     goto out;
   }
   /* ################## outfile to preserve-out read/write loop ########################### */
-
+  if(outfile_stdin == 0)
+    fd2 = STDOUT_FILENO;
    while((blocksz = read(fd2, preservebuf, len)) > 0)
   {
      if (blocksz < 0) { // failed
@@ -272,6 +297,11 @@ int main(int argc, char** argv)
   lseek(fd2, 0, SEEK_SET);
 
   /* ################## infile/outfile read/write loop ########################### */
+  if(infile_stdin == 0)
+    fd1 = STDIN_FILENO;
+   if(outfile_stdin == 0)
+    fd2 = STDIN_FILENO;
+  
   while((blocksz = read(fd1, buf, len)) > 0 ){
       if (blocksz < 0) { // failed
         debug("read failed: retval: %d\n", blocksz);
@@ -301,13 +331,16 @@ int main(int argc, char** argv)
   if(retval == 0)
     debug("Successful.\n");
   else
-    //debug("retval: %d\n", retval);
+    debug("retval: %d\n", retval);
   if(retval == 0)
     remove("preserved-outfile");
   else
   {
-    remove(outfile);
-    rename("preserved-outfile", outfile);
+    if(outfile)
+    {
+      remove(outfile);
+      rename("preserved-outfile", outfile);
+    }
   }
   // close fd2
   if (fd2 >= 0)
