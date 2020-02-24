@@ -6,6 +6,29 @@
 #include <unistd.h>
 #include <string.h>
 #include "functions.h"
+#include "debug.h"
+
+#define DBG_NONE 0x00
+#define DBG_ENTEXIT 001 // entry/exit to fxn
+#define DBG_LIB 0x02 // before/after call to lib fxn
+#define DBG_SYSCALL 0x04 // before/after call to syscall
+#define DBG_ARGS 0x10 // print args before calling fxn
+#define DBG_RET	0x20 // print retval before return from fxn
+
+/* 
+ TODO:
+ len for reading from file ??
+ bufsize = getpagesize()??
+
+  preserve outfile on failure?
+  same in/out file?
+  relative pathnames / absolute ones?
+
+  writeFile in functions.c??
+  
+
+*/
+
 
 
 #define VERSION "10.2.1"
@@ -33,76 +56,69 @@
 int main(int argc, char** argv)
 {  
   int bufsize = getpagesize(); // probably 4K
-  int debug1 = -1, debug2 = -1, debug4 = -1, debug16 = -1, debug32 = -1;
   int len = bufsize;
-  void *buf = NULL;
-  char *infile = NULL; // get it from args passed to main
-  char *outfile = NULL; // get it from args passed to main
-  char *password; //user specified password
-  int fd1 = -1, fd2 = -1, retval = 0;
-  int decrypt = -1, encrypt = -1, passfile = -1;
-  
+  void *buf = NULL, *preservebuf = NULL;
+  char *infile = NULL, *outfile = NULL, *password = NULL;
+  int fd1 = -1, fd2 = -1, fd3 = -1, fd4 = -1, retval = 0;
+  int decrypt = -1, encrypt = -1;
+  int debug1 = -1, debug2 = -1, debug4 = -1, debug16 = -1, debug32 = -1;
   int opt;
   extern char *optarg;
   extern char *optarg;
   extern int optind, opterr, optopt;
-
-
-  //prints all command line arguments
- /*   for(int i = 1; i < argc; i++)
-  {
-    printf("Arg[%d]: %s\n",i, argv[i]);
-  }  */
-
-  
   
   while((opt = getopt(argc, argv, ":p:hvD:ed")) != -1)  
   {  
     switch(opt)  
     {  
       case 'p':  
-          printf("passwordFileName: %s\n", optarg);  
-          passfile = 1;
+          debug("passwordFileName: %s\n", optarg);  
+          password = optarg;
           break;  
       case 'h':  
           fprintf(stderr, "error: a simple usage line on stderr and exit with a non-zero status code.\n"); 
-          exit(6); 
+          retval = 14;
+          goto out; 
           break;  
       case 'v':  
-          printf("Version: %s\n", VERSION);  
+          debug("Version: %s\n", VERSION);  
           break; 
       case 'e':  
           if(decrypt == -1)
             encrypt = 1;
           else{
-            perror("Cannot decrpt if encrypt option is provided");
-            exit(4);
+            debug("Cannot decrpt if encrypt option is provided");
+            retval = 13;
+            goto out;
           }
           
           break;   
       case 'D':  
-          printf("-D tag: %s\n", optarg);  
-          int x = ~(0 & 0) & atoi(optarg);
-          debug1 = x & 0x01;
-          debug2 = x & 0x02;
-          debug4 = x & 0x04;
-          debug16 = x & 0x10;
-          debug32 = x & 0x20;
-          printf("debug1: %d\n", debug16);
+          debug("-D tag: %s\n", optarg);
+          char *test; 
+          //sscanf(optarg, "%i", &x);
+          long x = strtol(optarg, &test, 0);
+          debug1 = x & DBG_ENTEXIT;
+          debug2 = x & DBG_LIB;
+          debug4 = x & DBG_SYSCALL;
+          debug16 = x & DBG_ARGS;
+          debug32 = x & DBG_RET;
+          // printf("debug1: %d\ndebug2: %d\ndebug4: %d\ndebug16: %d\ndebug32: %d\n", debug1, debug2, debug4, debug16, debug32);
           break;
       case 'd':  
           if(encrypt == -1)
             decrypt = 1;
           else{
-            perror("Cannot encrypt if decrypt option is provided");
-            exit(5);
+            debug("Cannot encrypt if decrypt option is provided");
+            retval = 12;
+            goto out;
           }
 
           break;    
       case '?':  
-          printf("unknown option: %c\n", optopt); 
-          exit(7);
-          break;  
+          debug("unknown option: %c\n", optopt); 
+          retval = 11;
+          goto out; 
     }  
   }  
 
@@ -110,47 +126,52 @@ int main(int argc, char** argv)
   {
     for(int j = optind; j < argc; j++)
     {
-    /*   if(strcmp("-", argv[j]) == 0)
+      if(strcmp("-", argv[j]) == 0)
       {
         if(optind == j)
           fd1 = 0;
         else
           fd2 = 0;
       }
-      else */
+      else 
       {
         if(optind == j)
           infile = argv[j];
-        else if (optind+1 == j)
+        else /* if (optind+1 == j) */
           outfile = argv[j];
       }
     }
   }
   else
   {
-    perror("No input file provided?");
-    exit(8);
+    debug("No input file provided\n");
+    retval = 10;
+    goto out;
   }
 
+  debug("Infile: %s Outfile: %s\n", infile, outfile);
+
   if(encrypt == 1)
-    printf("Encrypt with specified user pw\n");
+    debug("Encrypt with specified user pw\n");
   else if(decrypt == 1)
-    printf("Decrypt with specified user pw\n");
+    debug("Decrypt with specified user pw\n");
 
 
-/*   if(passfile == -1)
-    password = getpass("Enter password:"); */
-    password = "abc";
-
-
+  if(password)
+  {
+    printf("reading from passfile\n");
+  }
+  else
+    password = getpass("Enter password:"); 
+  //password = "abc";
 
   if(fd1 == 0)
-    printf("Reading input from stdio\n");
+    debug("Reading input from stdio\n");
   
   if(fd2 == 0)
-    printf("reading output from stdio\n");
+    debug("reading output from stdio\n");
 
-  // 1. alloc a buffer
+  // alloc a buffer
   buf = malloc(bufsize);
   if (buf == NULL) {
     perror("malloc");
@@ -158,61 +179,154 @@ int main(int argc, char** argv)
     goto out;
   }
 
-  // 2. open infile
+  preservebuf = malloc(bufsize);
+  if (preservebuf == NULL) {
+    perror("malloc");
+    retval = 5;
+    goto out;
+  }
+
+  /* ################## opening files ########################### */
+
+  // open infile
   fd1 = open(infile, O_RDONLY);
-  
   if (fd1 < 0) {
     perror(infile);
     retval = 2; // indicates to caller that open infile failed
     goto out;
   }
 
-  // 3. open outfile
-  fd2 = open(outfile, O_WRONLY);
+  // open outfile
+  fd2 = open(outfile, O_RDWR);
   if (fd2 < 0) {
     perror(outfile);
     retval = 3; // indicates to caller that open outfile failed
     goto out;
   }
 
-  // here is the main code: read/write loop
-  // if inside r/w loop, something bad happens, you can do cleanup, set
-  // retval, and goto out_close2. Also, if the inner loop completely
-  // succeeded, set retval=0, and then goto out_close2.
-  // 3. read from file 1
-  /* int rv = -1;
-  while(rv = read(fd1, buf, len) != 0 | rv <! 0){
-    if (rv < 0) { // failed
-      perror("read");
-      retval = 4; //indicates to caller there was a read error
+  //create/open tempfile
+  fd3 = open("preserved-outfile", O_CREAT|O_WRONLY, 00700 ) ;
+  if (fd3 < 0) {
+    perror("tempfile");
+    retval = 4; //indicates to caller that temp file failed
+    goto out;
+  }
+
+  if(password)
+  {
+    debug("opening passfile\n");
+    //open passfile
+    fd4 = open(password, O_RDONLY) ;
+    if (fd4 < 0) {
+      perror("password file");
+      retval = 20; //indicates to caller that pass file failed
       goto out;
     }
-  } */
-
-  if( readFile(fd1, buf, len) < 0){
-    perror("read error");
-    goto out;
   }
 
+  int writeval;
+  int blocksz;
+  int check_partial;
+  /* ################## passfile read ########################### */
+   while((blocksz = read(fd4, buf, len)) > 0)
+  {
+     if (blocksz < 0) { // failed
+          debug("password read failed blocksz: %d\n", blocksz);
+          retval = 21;
+          goto out;
+        }     
+  } 
 
-  if( writeFile(fd2, buf, len) < 0){
-    perror("write error");
+  debug("password: %s\n", buf );
+
+  free(buf);
+  buf = malloc(bufsize);
+  if (buf == NULL) {
+    perror("malloc");
+    retval = 22; // indicates to caller that malloc failed
     goto out;
-
   }
+  /* ################## outfile to preserve-out read/write loop ########################### */
+
+   while((blocksz = read(fd2, preservebuf, len)) > 0)
+  {
+     if (blocksz < 0) { // failed
+          debug("read failed: readToPreserve: %d\n", blocksz);
+          retval = 6;
+          goto out;
+        }
+
+        check_partial = 0;
+        while(check_partial < blocksz)
+        {
+          writeval = write(fd3, preservebuf, blocksz);
+          if(writeval < 0)
+          {
+            retval = 7;
+            goto out;
+          }
+          check_partial = check_partial + writeval;
+        }
+  } 
+
+  lseek(fd2, 0, SEEK_SET);
+
+  /* ################## infile/outfile read/write loop ########################### */
+  while((blocksz = read(fd1, buf, len)) > 0 ){
+      if (blocksz < 0) { // failed
+        debug("read failed: retval: %d\n", blocksz);
+        retval = 8;
+        goto out;
+      }
+
+      check_partial = 0;
+      while(check_partial < blocksz)
+      {
+        writeval = write(fd2, buf, blocksz);
+        if(writeval < 0)
+        {
+          retval = 9;
+          goto out;
+        }
+        check_partial = check_partial + writeval;
+      }       
+  }
+
+  //successful exit
+  retval = 0;
+
 
 
  out:
+  if(retval == 0)
+    debug("Successful.\n");
+  else
+    //debug("retval: %d\n", retval);
+  if(retval == 0)
+    remove("preserved-outfile");
+  else
+  {
+    remove(outfile);
+    rename("preserved-outfile", outfile);
+  }
   // close fd2
   if (fd2 >= 0)
     close(fd2);
   // close fd1
   if (fd1 >= 0)
     close(fd1);
+  //close fd3
+  if (fd3 >= 0)
+    close(fd3);
+  //close fd4
+  if (fd4 >= 0)
+    close(fd4);
   // free buf
   if (buf != NULL)
     free(buf);
-
+  // free preservebuf
+  if(preservebuf != NULL)
+    free(preservebuf);
   exit(retval);
 
   
