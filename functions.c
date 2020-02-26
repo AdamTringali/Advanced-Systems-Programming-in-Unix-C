@@ -4,21 +4,184 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-
-int readFile(int fd, void* buf , int len)
+#include <openssl/conf.h>
+#include <openssl/evp.h>
+#include <openssl/err.h>
+#include "macros.h"
+/* unsigned char *plaintext, int plaintext_len, unsigned char *key,
+  unsigned char *iv, unsigned char *ciphertext */
+int readWriteFile(int fd1, void* buf , int len, int fd2, long debugs,
+  unsigned char *key, unsigned char *iv, unsigned char *ciphertext, int crypt)
 {
-    int rv = -1;
-    while(rv = read(fd, buf, len) != 0 | rv <! 0){
-    if (rv < 0) { // failed
-      return 1;
+  int check_partial;
+  int blocksz;
+  int writeval;
+  int retval;
+
+/*  if(debugs[2])
+    fprintf(stderr,"DBG_SYSCALL: Before read() syscall \n"); */
+  while((blocksz = read(fd1, buf, len)) > 0 ){
+      if (blocksz < 0) { // failed
+        debug("read failed: retval: %d\n", blocksz);
+        retval = 8;
+        return retval;
+      }
+
+      check_partial = 0;
+/*        if(debugs[2])
+        fprintf(stderr,"DBG_SYSCALL: Before write() syscall \n"); */ 
+      while(check_partial < blocksz)
+      {
+        if(key != NULL && crypt > 0)
+        {
+          if(crypt == 1)//ENCRYPT
+          {
+            printf("ENCRYPTING\n");
+            //ENCRYPT OR DECRYPT
+            int ciphertext_len;
+            unsigned char ciphertext2[128];
+            ciphertext_len = encrypt (buf, blocksz, key, iv,
+                            ciphertext2);
+            //BIO_dump_fp (fd2, (const char *)ciphertext2, ciphertext_len);
+
+            writeval = write(fd2, ciphertext2, ciphertext_len);
+            if(writeval < 0)
+            {
+              retval = 49;
+              return retval;
+            } 
+            exit(1);//!!!!!!!!!!!!!!!
+            check_partial = check_partial + writeval; 
+          }
+          else if(crypt == 2)//DECRYPT
+          {
+            printf("DECRYPTING\n");
+            //ENCRYPT OR DECRYPT
+            int decryptedtext_len;
+            unsigned char dcrtxt2[128];
+            decryptedtext_len = decrypt(buf, blocksz, key, iv,
+                                dcrtxt2);
+            printf("after decrypt?\n");
+
+            writeval = write(fd2, dcrtxt2, decryptedtext_len);
+            if(writeval < 0)
+            {
+              retval = 50;
+              return retval;
+            } 
+            exit(1);//!!!!!!!!!!!!!!!
+            check_partial = check_partial + writeval;  
+          }
+        }
+        else
+        {
+          printf("null, do nothing\n");
+          writeval = write(fd2, buf, blocksz);
+          if(writeval < 0)
+          {
+            retval = 9;
+            return retval;
+          }
+          check_partial = check_partial + writeval;
+        }
+
+
+  
+      }       
+/*        if(debugs[2])
+        fprintf(stderr,"DBG_SYSCALL: After write() syscall \n");  */
     }
-  }
-  return 0;
+/*    if(debugs[2])
+    fprintf(stderr,"DBG_SYSCALL: After read() syscall \n"); 
+ */
+    return 0;
 
 }
 
-int writeFile(int fd, void* buf, int len)
-{    
-    return write(fd, buf, strlen(buf));
+int decrypt(unsigned char *ciphertext, int ciphertext_len, unsigned char *key,
+            unsigned char *iv, unsigned char *plaintext)
+{
+    EVP_CIPHER_CTX *ctx;
+    int len;
+    int plaintext_len;
+    /* Create and initialise the context */
+    if(!(ctx = EVP_CIPHER_CTX_new()))
+        return -1;
 
+    /*
+     * Initialise the decryption operation. IMPORTANT - ensure you use a key
+     * and IV size appropriate for your cipher
+     * In this example we are using 256 bit AES (i.e. a 256 bit key). The
+     * IV size for *most* modes is the same as the block size. For AES this
+     * is 128 bits
+     */
+    if(1 != EVP_DecryptInit_ex(ctx, EVP_aes_256_ctr(), NULL, key, iv))
+        return -1;
+
+    /*
+     * Provide the message to be decrypted, and obtain the plaintext output.
+     * EVP_DecryptUpdate can be called multiple times if necessary.
+     */
+    if(1 != EVP_DecryptUpdate(ctx, plaintext, &len, ciphertext, ciphertext_len))
+        return -1;
+    plaintext_len = len;
+
+    /*
+     * Finalise the decryption. Further plaintext bytes may be written at
+     * this stage.
+     */
+    if(1 != EVP_DecryptFinal_ex(ctx, plaintext + len, &len))
+        return -1;
+    plaintext_len += len;
+
+    /* Clean up */
+    EVP_CIPHER_CTX_free(ctx);
+
+    return plaintext_len;
+}
+
+int encrypt(unsigned char *plaintext, int plaintext_len, unsigned char *key,
+  unsigned char *iv, unsigned char *ciphertext)
+{
+    EVP_CIPHER_CTX *ctx;
+
+    int len;
+
+    int ciphertext_len;
+
+    /* Create and initialise the context */
+    if(!(ctx = EVP_CIPHER_CTX_new()))
+        return -1;
+    /*
+     * Initialise the encryption operation. IMPORTANT - ensure you use a key
+     * and IV size appropriate for your cipher
+     * In this example we are using 256 bit AES (i.e. a 256 bit key). The
+     * IV size for *most* modes is the same as the block size. For AES this
+     * is 128 bits
+     */
+
+    if(1 != EVP_EncryptInit_ex(ctx, EVP_aes_256_ctr(), NULL, key, iv))
+        return -1;
+
+    /*
+     * Provide the message to be encrypted, and obtain the encrypted output.
+     * EVP_EncryptUpdate can be called multiple times if necessary
+     */
+    if(1 != EVP_EncryptUpdate(ctx, ciphertext, &len, plaintext, plaintext_len))
+        return -1;
+    ciphertext_len = len;
+
+    /*
+     * Finalise the encryption. Further ciphertext bytes may be written at
+     * this stage.
+     */
+    if(1 != EVP_EncryptFinal_ex(ctx, ciphertext + len, &len))
+        return -1;
+
+    ciphertext_len += len;
+
+    /* Clean up */
+    EVP_CIPHER_CTX_free(ctx);
+
+    return ciphertext_len;
 }

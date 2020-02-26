@@ -1,9 +1,19 @@
 CC=gcc
-CFLAGS =  -Wall -O2
- 
+LDFLAGS= -lssl -lcrypto
 
-filesec: main.o debug.h
-	gcc main.o functions.c -o filesec 
+ifdef extracredit
+
+CFLAGS = -Wall -Werror -O2 -DDEBUG1 -DEXTRACREDIT
+
+else
+
+CFLAGS = -Wall -Werror -O2 -DDEBUG1
+
+endif
+
+
+filesec: main.o macros.h
+	gcc main.o functions.c -o filesec $(LDFLAGS)
 
 main.o: main.c
 	$(CC) $(CFLAGS) $(DEBUG) -c main.c 

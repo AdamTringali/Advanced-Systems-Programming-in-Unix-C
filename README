@@ -1,3 +1,9 @@
 CSE-376 (Spring 2020) Homework Assignment #1
 
+to run with my debug statements do:
+make clean
+make debug
+
+
+
 filesec [-devh] [-D DBGVAL] [-p PASSFILE] infile outfile
