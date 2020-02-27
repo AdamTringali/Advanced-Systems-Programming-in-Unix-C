@@ -15,7 +15,7 @@
 int readWriteFile(int fd1, void* buf , int len, int fd2, long debugs,
   unsigned char *key, unsigned char *iv, unsigned char *ciphertext, int crypt)
 {
-  if(debugs & 0x10)
+  if((debugs & 0x10) && (debugs & 0x01))
     if(key != NULL)
       fprintf(stderr, "ARGS: readWriteFile- len:%d debugs:%ld first 4 of key:%02x%02x crypt:%d iv:%s \n", len, debugs, key[0],key[1], crypt, iv);
     else
@@ -30,7 +30,9 @@ int readWriteFile(int fd1, void* buf , int len, int fd2, long debugs,
 
   if(key != NULL && crypt == 2)//DECRYPT, GET/STORE KEY 
   {
+    DBG_SYSCALL(debugs, "Before read()");
     blocksz = read(fd1, buf, 32);
+    DBG_SYSCALL(debugs, "After read()");
       if(blocksz = 0){
         retval = 56; 
         return retval;
@@ -146,7 +148,7 @@ int readWriteFile(int fd1, void* buf , int len, int fd2, long debugs,
   DBG_SYSCALL(debugs, "After read()");
 
 
-  if(debugs & 0x20)
+  if((debugs & 0x20) && (debugs & 0x01))
     if(key != NULL){
       fprintf(stderr, "RET: readWriteFile- len:%d debugs:%ld first 4 of key:%02x%02x crypt:%d iv:%s \n", len, debugs, key[0],key[1], crypt, iv);
     }
@@ -160,7 +162,7 @@ int readWriteFile(int fd1, void* buf , int len, int fd2, long debugs,
 int decrypt(unsigned char *ciphertext, int ciphertext_len, unsigned char *key,
             unsigned char *iv, unsigned char *plaintext, long debugs)
 {
-  if(debugs & 0x10)
+  if((debugs & 0x10) && (debugs & 0x01))
   {
     fprintf(stderr, "ARGS: decrypt- ciphertext_len: %d, first 4 of key: %02x%02x, iv: %s, debugs: %ld\n", 
     ciphertext_len, key[0], key[1], iv, debugs);
@@ -186,7 +188,7 @@ int decrypt(unsigned char *ciphertext, int ciphertext_len, unsigned char *key,
 
     EVP_CIPHER_CTX_free(ctx);
 
-    if(debugs && 0x20){
+    if((debugs & 0x20) && (debugs & 0x01)){
       fprintf(stderr, "RET: decrypt- ciphertext_len:%d, first 4 of key: %02x%02x, iv:%s, debugs:%ld\n", ciphertext_len, key[0],key[1], iv, debugs);
     }
 
@@ -196,7 +198,7 @@ int decrypt(unsigned char *ciphertext, int ciphertext_len, unsigned char *key,
 int encrypt(unsigned char *plaintext, int plaintext_len, unsigned char *key,
   unsigned char *iv, unsigned char *ciphertext, long debugs)
 {
-    if(debugs & 0x10)
+    if((debugs & 0x10) && (debugs & 0x01))
   {
     fprintf(stderr, "ARGS: encrypt- plaintext_len: %d, first 4 of key: %02x%02x, iv: %s, debugs: %ld \n", 
     plaintext_len, key[0], key[1], iv, debugs);
@@ -218,7 +220,7 @@ int encrypt(unsigned char *plaintext, int plaintext_len, unsigned char *key,
     ciphertext_len += len;
     EVP_CIPHER_CTX_free(ctx);
 
-    if(debugs && 0x20){
+    if((debugs & 0x20) && (debugs & 0x01)){
       fprintf(stderr, "RET: encrypt- plaintext_len:%d, first 4 of key: %02x%02x, iv:%s, debugs:%ld\n", plaintext_len, key[0],key[1], iv, debugs);
     }
 

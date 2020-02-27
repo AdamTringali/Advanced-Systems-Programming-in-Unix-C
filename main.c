@@ -103,7 +103,7 @@ int main(int argc, char** argv)
           if(crypt == -1)
             crypt = 2;
           else{
-            fprintf(stderr, "Cannot encrypt if decrypt option is \n");
+            fprintf(stderr, "Cannot encrypt if decrypt option is provided\n");
             retval = 12;
             goto out;
           }
@@ -172,20 +172,30 @@ int main(int argc, char** argv)
         int length;
         char *pwcopy = NULL;
         DBG_LIB(dbg_input,"LIB:Before strlen() \n");
+        if((dbg_input & 0x10) && (dbg_input & 0x02))
+          fprintf(stderr, "ARGS: strlen-password:%s\n", password);
         length = strlen(password) + 1;
         DBG_LIB(dbg_input,"LIB:After strlen()\n");
         DBG_LIB(dbg_input,"LIB:Before malloc \n");
         pwcopy = (char *)malloc(sizeof(char) * length);
         DBG_LIB(dbg_input,"LIB:After malloc \n");
         DBG_LIB(dbg_input,"LIB:Before strcpy \n");
+        if((dbg_input & 0x10) && (dbg_input & 0x02))
+          fprintf(stderr, "ARGS: strcpy-pwcopy:%s, password: %s\n", pwcopy, password);
         strcpy(pwcopy, password);
         DBG_LIB(dbg_input,"LIB:After strcpy\n");
+        if((dbg_input & 0x20) && (dbg_input & 0x02))
+          fprintf(stderr, "RET: strcpy-pwcopy:%s, password: %s\n", pwcopy, password);
         DBG_LIB(dbg_input,"LIB:Before getpass (confirmation)\n");
         pass2 = getpass("Confirm password:");
         DBG_LIB(dbg_input,"LIB:After getpass (confirmation)  \n");
+        if((dbg_input & 0x10) && (dbg_input & 0x02))
+          fprintf(stderr, "RET: getpass: %s\n", pass2);
         debug("pass2: %s, strlen: %ld\n", pass2, strlen(pass2));
         DBG_LIB(dbg_input,"LIB:Before strcmp (two passwords) \n");
         DBG_LIB(dbg_input,"LIB:Before free (pwcopy)  \n");
+        if((dbg_input & 0x10) && (dbg_input & 0x02))
+          fprintf(stderr, "ARGS: strcmp-pwcopy: %s, pass2:%s\n", pwcopy, pass2);
         if(strcmp(pwcopy, pass2) == 0)
         {
           debug("passwords match\n");
@@ -217,6 +227,8 @@ int main(int argc, char** argv)
     goto out;
   }
   DBG_LIB(dbg_input,"LIB: After Malloc \n");
+  if((dbg_input & 0x20) && (dbg_input & 0x02))
+    fprintf(stderr, "RET: malloc-malloc != NULL:%d\n", buf != NULL);
   DBG_LIB(dbg_input,"LIB: Before Malloc  \n");
   preservebuf = malloc(bufsize);
   if (preservebuf == NULL) {
@@ -225,15 +237,21 @@ int main(int argc, char** argv)
     goto out;
   }
   DBG_LIB(dbg_input,"LIB: After Malloc \n");
-
+  if((dbg_input & 0x20) && (dbg_input & 0x02))
+    fprintf(stderr, "RET: malloc-malloc != NULL:%d\n", preservebuf != NULL);
+  
   /* ################## opening files ########################### */
 
   // open infile
   if(infile_stdin == -1)//not reading from stdin
   {
     DBG_SYSCALL(dbg_input, "SYSCALL: Before open() (infile)\n");
+    if((dbg_input & 0x10) && (dbg_input & 0x02))
+      fprintf(stderr, "ARGS: infile: %s\n", infile);
     fd1 = open(infile, O_RDONLY);
     DBG_SYSCALL(dbg_input, "SYSCALL: After open() (infile)\n");
+    if((dbg_input & 0x20) && (dbg_input & 0x02))
+      fprintf(stderr, "RET: infile: %s\n", infile);
 
     if (fd1 < 0) {
       perror(infile);
@@ -246,8 +264,12 @@ int main(int argc, char** argv)
   if(outfile_stdin == -1) //not reading from stdin
  { 
     DBG_SYSCALL(dbg_input, "SYSCALL: Before open() (outfile)\n");
+    if((dbg_input & 0x10) && (dbg_input & 0x02))
+      fprintf(stderr, "ARGS: outfile: %s\n", outfile);
     fd2 = open(outfile, O_RDWR|O_CREAT, 00700);
     DBG_SYSCALL(dbg_input, "SYSCALL: After open() (outfile)\n");
+    if((dbg_input & 0x20) && (dbg_input & 0x02))
+      fprintf(stderr, "RET: outfile: %s\n", outfile);
     if (fd2 < 0) {
       perror(outfile);
       retval = 3; // indicates to caller that open outfile failed
@@ -257,7 +279,12 @@ int main(int argc, char** argv)
 
   //create/open tempfile
   DBG_SYSCALL(dbg_input, "SYSCALL: Before open() (tempfile)\n");
+  if((dbg_input & 0x10) && (dbg_input & 0x02))
+    fprintf(stderr, "ARGS: preserve-outfile: %s\n", "preserve-outfile");
   fd3 = open("preserved-outfile", O_CREAT|O_WRONLY, 00700 );
+  if((dbg_input & 0x20) && (dbg_input & 0x02))
+    fprintf(stderr, "RET: preserve-outfile: %d\n", fd3);
+
   DBG_SYSCALL(dbg_input, "SYSCALL: After open() (tempfile)\n");
   if (fd3 < 0) {
     perror("tempfile");
@@ -270,7 +297,12 @@ int main(int argc, char** argv)
     debug("opening passfile\n");
     //open passfile
     DBG_SYSCALL(dbg_input, "SYSCALL: Before open() (passfile)\n");
+    if((dbg_input & 0x10) && (dbg_input & 0x02))
+      fprintf(stderr, "ARGS: passfile: %s\n", password);
     fd4 = open(password, O_RDONLY);
+    if((dbg_input & 0x20) && (dbg_input & 0x02))
+      fprintf(stderr, "RET: passfile: %s\n", password);
+  
     DBG_SYSCALL(dbg_input, "SYSCALL: After open() (tempfile)\n");
     if (fd4 < 0) {
       perror("password file");
@@ -284,6 +316,8 @@ int main(int argc, char** argv)
   if(passfile == 1) 
   { 
     DBG_SYSCALL(dbg_input, "SYSCALL: Before read() (passfile)\n");
+    if((dbg_input & 0x10) && (dbg_input & 0x04))
+      fprintf(stderr, "ARGS: read-fd:%d, len: %d\n", fd4, len);
     while((blocksz = read(fd4, buf, len)) > 0)
     {
       if (blocksz < 0) { // failed
@@ -293,6 +327,8 @@ int main(int argc, char** argv)
       }     
     } 
     DBG_SYSCALL(dbg_input, "SYSCALL: After read() (passfile)\n");
+    if((dbg_input & 0x20) && (dbg_input & 0x04))
+      fprintf(stderr, "RET: read-blocksz: %d \n", blocksz);
     char *c = strchr(buf, '\n');
     if (c){
       debug("newline character. removing\n");
@@ -300,13 +336,24 @@ int main(int argc, char** argv)
     }
     //debug("passfile password: %s\n", (char*)(buf));
     DBG_LIB(dbg_input,"LIB: Before strcpy (password, buf)\n");
+    if((dbg_input & 0x10) && (dbg_input & 0x02) && password != NULL)
+      fprintf(stderr, "ARGS: strcpy-password: %s \n", password);
     strcpy(password, buf);
     DBG_LIB(dbg_input,"LIB: After strcpy (password,buf)\n");
+    if((dbg_input & 0x20) && (dbg_input & 0x02) && password != NULL)
+      fprintf(stderr, "RET: strcpy-password: %s \n", password);
   }
 
   //generate hashed key
   unsigned char* pkey = (unsigned char*)password;
+  DBG_LIB(dbg_input,"LIB: Before SHA256 (password)\n");
+  if((dbg_input & 0x10) && (dbg_input & 0x02))
+    fprintf(stderr, "ARGS: SHA256- password: %s \n", password);
 	key = SHA256(pkey, strlen(password), 0);
+  DBG_LIB(dbg_input,"LIB: After SHA256 (password)\n");
+  if((dbg_input & 0x20) && (dbg_input & 0x02) && password != NULL)
+    fprintf(stderr, "RET: SHA256- pkey:%04x \n", key[0]);
+
   unsigned char *iv = (unsigned char *)"0";
   unsigned char ciphertext[4096];
 

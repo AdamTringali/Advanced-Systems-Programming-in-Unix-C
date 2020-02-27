@@ -3,11 +3,11 @@ LDFLAGS= -lssl -lcrypto
 
 ifdef extracredit
 
-CFLAGS = -Wall -Werror -O2 -DDEBUG1 -DEXTRACREDIT
+CFLAGS = -g -Wall -Werror -O2 -DDEBUG1 -DEXTRACREDIT
 
 else
 
-CFLAGS = -Wall -Werror -O2 -DDEBUG1
+CFLAGS = -g -Wall -Werror -O2 -DDEBUG1
 
 endif
 

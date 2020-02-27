@@ -1,9 +1,36 @@
 CSE-376 (Spring 2020) Homework Assignment #1
 
-to run with my debug statements do:
+filesec [-devh] [-D DBGVAL] [-p PASSFILE] [-s] infile outfile
+
+
+to run with extra credit do:
+make clean
+make extracredit=1
+
+DEBUG VALUES:
+0x10 : print args to functions (MUST ALSO INCLUDE 0x01 | 0x02 | 0x04)
+0x20 : print retvals from functions (MUST ALSO INCLUDE 0x01 | 0x02 | 0x04)
+
+Symmetric Encryption and Decryption
+Source: https://wiki.openssl.org/index.php/EVP_Symmetric_Encryption_and_Decryption
+Used as a guide for encryption and decryption. Encrypt & decrypt functions 
+are similiar, calls to those functions are different. 
+
+INCLUDED:
+tests folder: has in.txt, out.txt and pass.txt
+    in.txt has some sample input
+    pass.txt contains a password and a newline. Password is from [0] to [\n]
+Extra Credit: 
+    [A] - an option [-s] (safe) which will cause the program to prompt for
+    the user password twice. If the passwords didn't match, abort with an appropriate
+    error.
+NOTES:
+    Some functions have been omitted from the ARGS/RET Debug options because 
+    I deemed them unnecessary.
+    In addition to omitting some unnecessary calls from the Debugs, some may have been
+    looked over because of the excessive amount of debug statements. 
+
+to print my debug statements do:
 make clean
 make debug
 
-
-
-filesec [-devh] [-D DBGVAL] [-p PASSFILE] infile outfile
