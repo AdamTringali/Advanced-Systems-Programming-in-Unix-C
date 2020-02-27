@@ -13,6 +13,12 @@
 /* 
  TODO:
 
+  add hashed password to outfile
+  add debug statements in functions.c
+  cleaup functions.c comments/code
+  why isnt debug() working in functions.c?
+  
+
   preserve outfile on failure?
   same in/out file?
   relative pathnames / absolute ones?
@@ -24,28 +30,22 @@
   exit to every function in your code that you write, including main(), but
   not library calls you call.  Print the name of the function and whether
   you're entering or exiting it.
-  debugs[0]
 
 - Debug value 0x02 (2d): print right before and right after calling any
   library call (e.g., from libc, libssl, etc.).  Print the function name and
   whether you're before or after calling it.
-  debugs[1]
 
 - Debug value 0x04 (4d): print right before and right after calling any
   system call (e.g., open, read, write, close).  Print the syscall name and
   whether you're before or after calling it.
-  debugs[2]
 
 - Debug value 0x10 (16d): print also arguments to any function for debug
   values 0x1 (upon entry), 0x2 (right before), and 0x4 (right before).
-  debugs[3]
 
 - Debug value 0x20 (32d): print also return values (and errors if any) for
   any function for debug values 0x1 (right before return), 0x2 (right
   after), and 0x4 (right after). 
-  debugs[4]
   */
-
 int main(int argc, char** argv)
 {  
   int bufsize = getpagesize(); // probably 4K
@@ -147,8 +147,14 @@ int main(int argc, char** argv)
 
   if(crypt == 1)
     debug("Encrypt with specified user pw\n");
-  else 
+  else if(crypt == 2)
     debug("Decrypt with specified user pw\n");
+  else
+    {
+      retval = 99;
+      dbg("Either encryption or decryption must be selected.\n");
+      goto out;
+    }
 
 
   if(password)
@@ -157,17 +163,29 @@ int main(int argc, char** argv)
     passfile = 1;
   }
    else{
+    DBG_LIB(dbg_input,"LIB: Before getpass() \n");
     password = getpass("Enter password:"); 
+    DBG_LIB(dbg_input,"LIB: After getpass() \n");
     debug("password: %s, strlen: %ld\n", password, strlen(password));
     if(safeflag == 1 && EC == 1)
       {
         int length;
         char *pwcopy = NULL;
+        DBG_LIB(dbg_input,"LIB:Before strlen() \n");
         length = strlen(password) + 1;
+        DBG_LIB(dbg_input,"LIB:After strlen()\n");
+        DBG_LIB(dbg_input,"LIB:Before malloc \n");
         pwcopy = (char *)malloc(sizeof(char) * length);
+        DBG_LIB(dbg_input,"LIB:After malloc \n");
+        DBG_LIB(dbg_input,"LIB:Before strcpy \n");
         strcpy(pwcopy, password);
+        DBG_LIB(dbg_input,"LIB:After strcpy\n");
+        DBG_LIB(dbg_input,"LIB:Before getpass (confirmation)\n");
         pass2 = getpass("Confirm password:");
+        DBG_LIB(dbg_input,"LIB:After getpass (confirmation)  \n");
         debug("pass2: %s, strlen: %ld\n", pass2, strlen(pass2));
+        DBG_LIB(dbg_input,"LIB:Before strcmp (two passwords) \n");
+        DBG_LIB(dbg_input,"LIB:Before free (pwcopy)  \n");
         if(strcmp(pwcopy, pass2) == 0)
         {
           debug("passwords match\n");
@@ -183,25 +201,30 @@ int main(int argc, char** argv)
           goto out;
           
         }
+        DBG_LIB(dbg_input,"LIB: After free (pwcopy) \n");
+        DBG_LIB(dbg_input,"LIB: After strcmp (two passwords) \n");
       }
     
       
   } 
 
   // alloc a buffer
+  DBG_LIB(dbg_input,"LIB: Before Malloc \n");
   buf = malloc(bufsize);
   if (buf == NULL) {
     perror("malloc");
     retval = 1; // indicates to caller that malloc failed
     goto out;
   }
-
+  DBG_LIB(dbg_input,"LIB: After Malloc \n");
+  DBG_LIB(dbg_input,"LIB: Before Malloc  \n");
   preservebuf = malloc(bufsize);
   if (preservebuf == NULL) {
     perror("malloc");
     retval = 5;
     goto out;
   }
+  DBG_LIB(dbg_input,"LIB: After Malloc \n");
 
   /* ################## opening files ########################### */
 
@@ -276,31 +299,23 @@ int main(int argc, char** argv)
       *c = 0;
     }
     //debug("passfile password: %s\n", (char*)(buf));
-
+    DBG_LIB(dbg_input,"LIB: Before strcpy (password, buf)\n");
     strcpy(password, buf);
+    DBG_LIB(dbg_input,"LIB: After strcpy (password,buf)\n");
   }
 
   //generate hashed key
   unsigned char* pkey = (unsigned char*)password;
 	key = SHA256(pkey, strlen(password), 0);
   unsigned char *iv = (unsigned char *)"0";
-  unsigned char ciphertext[128];
+  unsigned char ciphertext[4096];
 
-    /* Buffer for the decrypted text */
-    //unsigned char decryptedtext[128];
-
-    //int decryptedtext_len, ciphertext_len;
-
-  //print hashed key  
- /* 	int i;
-	for (i = 0; i < SHA256_DIGEST_LENGTH; i++)
-		printf("%02x", key[i]);
-	putchar('\n');  */
-
-
+  DBG_LIB(dbg_input,"LIB: Before free \n");
   free(buf);
+  DBG_LIB(dbg_input,"LIB: After free \n");
+  DBG_LIB(dbg_input,"LIB: Before malloc \n");
   buf = malloc(bufsize);
-
+  DBG_LIB(dbg_input,"LIB: After malloc \n");
   if (buf == NULL) {
     perror("malloc");
     retval = 22; // indicates to caller that malloc failed
@@ -311,6 +326,7 @@ int main(int argc, char** argv)
     fd2 = STDOUT_FILENO;
 
   DBG_ENTEXIT(dbg_input, "ENTEXIT: Before wrapper function readWriteFile\n");
+  //DBG_ARGS(dbg_input, "Args for readWriteFile- len:%d dbg_input:%x\n", len, dbg_input);
   if(readWriteFile(fd2, preservebuf, len, fd3, dbg_input, NULL, NULL, NULL, crypt) !=0 )
   {
     retval = 25;
@@ -329,11 +345,10 @@ int main(int argc, char** argv)
    if(outfile_stdin == 0)
     fd2 = STDIN_FILENO;
 
-  DBG_ENTEXIT(dbg_input, "ENTEXIT: Before wrapper function readWriteFile\n");  
-/*   ciphertext_len = encrypt (plaintext, strlen ((char *)plaintext), key, iv,
-                          ciphertext); */
-  debug("in test: %d\n", key!=NULL);
-  
+  DBG_ENTEXIT(dbg_input, "ENTEXIT: Before wrapper function readWriteFile\n"); 
+
+   /*  DBG_ARGS(dbg_input, "Args for readWriteFile- len:%d dbg_input:%x key:%02x
+    ciphertext:%s crypt:%d \n", len, dbg_input, key, ); */
   if(readWriteFile(fd1, buf, len, fd2, dbg_input, key, iv, ciphertext, crypt) !=0 )
   {
     retval = 24;
@@ -344,8 +359,7 @@ int main(int argc, char** argv)
   //successful exit
   retval = 0;
 
- out:
-  
+out:
   if(retval == 0)
     debug("Successful.\n");
   else
@@ -360,7 +374,7 @@ int main(int argc, char** argv)
       DBG_SYSCALL(dbg_input, "SYSCALL: Before rename() (temp file -> [preserved]outfile)\n");
       rename("preserved-outfile", outfile);
       DBG_SYSCALL(dbg_input, "SYSCALL: After rename() (temp file -> [preserved]outfile)\n");
-      }
+    }
   }
 
   DBG_SYSCALL(dbg_input, "SYSCALL: Before close() fd1\n");

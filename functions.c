@@ -8,99 +8,163 @@
 #include <openssl/evp.h>
 #include <openssl/err.h>
 #include "macros.h"
+#include <openssl/sha.h>
+
 /* unsigned char *plaintext, int plaintext_len, unsigned char *key,
   unsigned char *iv, unsigned char *ciphertext */
 int readWriteFile(int fd1, void* buf , int len, int fd2, long debugs,
   unsigned char *key, unsigned char *iv, unsigned char *ciphertext, int crypt)
 {
+  if(debugs & 0x10)
+    if(key != NULL)
+      fprintf(stderr, "ARGS: readWriteFile- len:%d debugs:%ld first 4 of key:%02x%02x crypt:%d iv:%s \n", len, debugs, key[0],key[1], crypt, iv);
+    else
+      fprintf(stderr, "ARGS: readWriteFile- len:%d debugs:%ld \n", len, debugs);
+
   int check_partial;
   int blocksz;
   int writeval;
   int retval;
+  int passmatch = -1;
+  unsigned char *shapass = NULL;
 
-/*  if(debugs[2])
-    fprintf(stderr,"DBG_SYSCALL: Before read() syscall \n"); */
-  while((blocksz = read(fd1, buf, len)) > 0 ){
-      if (blocksz < 0) { // failed
-        debug("read failed: retval: %d\n", blocksz);
-        retval = 8;
+  if(key != NULL && crypt == 2)//DECRYPT, GET/STORE KEY 
+  {
+    blocksz = read(fd1, buf, 32);
+      if(blocksz = 0){
+        retval = 56; 
+        return retval;
+      }
+    int i;
+      shapass = malloc(64);
+      if(shapass == NULL)
+      {
+        if(debugs && 0x20)
+          fprintf(stderr, "Malloc failed. Exiting.");
+        retval = 57;
         return retval;
       }
 
-      check_partial = 0;
-/*        if(debugs[2])
-        fprintf(stderr,"DBG_SYSCALL: Before write() syscall \n"); */ 
-      while(check_partial < blocksz)
+      memcpy(shapass, buf, 32);
+  }
+
+  DBG_SYSCALL(debugs, "Before read()");
+
+  while((blocksz = read(fd1, buf, len)) > 0 ){
+
+    if (blocksz < 0) { // failed
+      if(debugs && 0x20)
+        fprintf(stderr, "Read() failed. Exiting.");
+      retval = 8;
+      return retval;
+    }
+
+    check_partial = 0;
+
+    DBG_SYSCALL(debugs, "Before write()");
+
+    while(check_partial < blocksz)
+    {
+      if(key != NULL && crypt > 0)
       {
-        if(key != NULL && crypt > 0)
+        //CHECK FOR PASSMATCH
+        if(crypt == 1)//ENCRYPT
         {
-          if(crypt == 1)//ENCRYPT
+          
+          int shortval2 = 0;
+          while(shortval2 != 32)
           {
-            printf("ENCRYPTING\n");
-            //ENCRYPT OR DECRYPT
-            int ciphertext_len;
-            unsigned char ciphertext2[128];
-            ciphertext_len = encrypt (buf, blocksz, key, iv,
-                            ciphertext2);
-            //BIO_dump_fp (fd2, (const char *)ciphertext2, ciphertext_len);
-
-            writeval = write(fd2, ciphertext2, ciphertext_len);
+            writeval = write(fd2, key, 32);
             if(writeval < 0)
             {
-              retval = 49;
-              return retval;
-            } 
-            exit(1);//!!!!!!!!!!!!!!!
-            check_partial = check_partial + writeval; 
+              if(debugs && 0x20)
+                fprintf(stderr, "Write error. Exiting");
+              return 50;
+            }
+            shortval2 = shortval2 + writeval;
           }
-          else if(crypt == 2)//DECRYPT
-          {
-            printf("DECRYPTING\n");
-            //ENCRYPT OR DECRYPT
-            int decryptedtext_len;
-            unsigned char dcrtxt2[128];
-            decryptedtext_len = decrypt(buf, blocksz, key, iv,
-                                dcrtxt2);
-            printf("after decrypt?\n");
-
-            writeval = write(fd2, dcrtxt2, decryptedtext_len);
-            if(writeval < 0)
-            {
-              retval = 50;
-              return retval;
-            } 
-            exit(1);//!!!!!!!!!!!!!!!
-            check_partial = check_partial + writeval;  
-          }
-        }
-        else
-        {
-          printf("null, do nothing\n");
-          writeval = write(fd2, buf, blocksz);
+          int ciphertext_len;
+          unsigned char ciphertext2[len];
+          ciphertext_len = encrypt(buf, blocksz, key, iv,
+                          ciphertext2, debugs);
+          blocksz = ciphertext_len;
+          writeval = write(fd2, ciphertext2, ciphertext_len);
           if(writeval < 0)
           {
-            retval = 9;
+            retval = 49;
+            return retval;
+          } 
+
+          check_partial = check_partial + writeval; 
+        }
+        else if(crypt == 2)//DECRYPT
+        {
+          if(shapass == NULL)
+          {
+            if(debugs && 0x20)
+              fprintf(stderr, "Unexpected error. Exiting.\n");
+            retval = 61; 
             return retval;
           }
-          check_partial = check_partial + writeval;
+
+          if(memcmp(shapass, key, 32) != 0)
+          {
+            if(debugs && 0x20)
+              fprintf(stderr, "Passwords do not match. Exiting.\n");
+            retval = 62;
+            return retval;
+          }
+          int decryptedtext_len;
+          unsigned char dcrtxt2[len];
+          decryptedtext_len = decrypt(buf, blocksz, key, iv,
+                              dcrtxt2, debugs);
+          blocksz = decryptedtext_len;
+
+          writeval = write(fd2, dcrtxt2, decryptedtext_len);
+          if(writeval < 0)
+          {
+            retval = 50;
+            return retval;
+          } 
+          check_partial = check_partial + writeval;  
         }
+      }
+      else
+      {
+        debug("null, do nothing\n");
+        writeval = write(fd2, buf, blocksz);
+        if(writeval < 0)
+        {
+          retval = 9;
+          return retval;
+        }
+        check_partial = check_partial + writeval;
+      }
+    }       
+    DBG_SYSCALL(debugs, "After write()");
+  }
+  DBG_SYSCALL(debugs, "After read()");
 
 
-  
-      }       
-/*        if(debugs[2])
-        fprintf(stderr,"DBG_SYSCALL: After write() syscall \n");  */
+  if(debugs & 0x20)
+    if(key != NULL){
+      fprintf(stderr, "RET: readWriteFile- len:%d debugs:%ld first 4 of key:%02x%02x crypt:%d iv:%s \n", len, debugs, key[0],key[1], crypt, iv);
     }
-/*    if(debugs[2])
-    fprintf(stderr,"DBG_SYSCALL: After read() syscall \n"); 
- */
-    return 0;
+    else{
+      fprintf(stderr, "RET: readWriteFile- len:%d debugs:%ld\n", len, debugs);
+    }
 
+  return 0;
 }
 
 int decrypt(unsigned char *ciphertext, int ciphertext_len, unsigned char *key,
-            unsigned char *iv, unsigned char *plaintext)
+            unsigned char *iv, unsigned char *plaintext, long debugs)
 {
+  if(debugs & 0x10)
+  {
+    fprintf(stderr, "ARGS: decrypt- ciphertext_len: %d, first 4 of key: %02x%02x, iv: %s, debugs: %ld\n", 
+    ciphertext_len, key[0], key[1], iv, debugs);
+  }
     EVP_CIPHER_CTX *ctx;
     int len;
     int plaintext_len;
@@ -108,80 +172,55 @@ int decrypt(unsigned char *ciphertext, int ciphertext_len, unsigned char *key,
     if(!(ctx = EVP_CIPHER_CTX_new()))
         return -1;
 
-    /*
-     * Initialise the decryption operation. IMPORTANT - ensure you use a key
-     * and IV size appropriate for your cipher
-     * In this example we are using 256 bit AES (i.e. a 256 bit key). The
-     * IV size for *most* modes is the same as the block size. For AES this
-     * is 128 bits
-     */
     if(1 != EVP_DecryptInit_ex(ctx, EVP_aes_256_ctr(), NULL, key, iv))
         return -1;
 
-    /*
-     * Provide the message to be decrypted, and obtain the plaintext output.
-     * EVP_DecryptUpdate can be called multiple times if necessary.
-     */
     if(1 != EVP_DecryptUpdate(ctx, plaintext, &len, ciphertext, ciphertext_len))
         return -1;
+
     plaintext_len = len;
 
-    /*
-     * Finalise the decryption. Further plaintext bytes may be written at
-     * this stage.
-     */
     if(1 != EVP_DecryptFinal_ex(ctx, plaintext + len, &len))
         return -1;
     plaintext_len += len;
 
-    /* Clean up */
     EVP_CIPHER_CTX_free(ctx);
+
+    if(debugs && 0x20){
+      fprintf(stderr, "RET: decrypt- ciphertext_len:%d, first 4 of key: %02x%02x, iv:%s, debugs:%ld\n", ciphertext_len, key[0],key[1], iv, debugs);
+    }
 
     return plaintext_len;
 }
 
 int encrypt(unsigned char *plaintext, int plaintext_len, unsigned char *key,
-  unsigned char *iv, unsigned char *ciphertext)
+  unsigned char *iv, unsigned char *ciphertext, long debugs)
 {
+    if(debugs & 0x10)
+  {
+    fprintf(stderr, "ARGS: encrypt- plaintext_len: %d, first 4 of key: %02x%02x, iv: %s, debugs: %ld \n", 
+    plaintext_len, key[0], key[1], iv, debugs);
+  }
     EVP_CIPHER_CTX *ctx;
-
     int len;
-
     int ciphertext_len;
-
-    /* Create and initialise the context */
     if(!(ctx = EVP_CIPHER_CTX_new()))
         return -1;
-    /*
-     * Initialise the encryption operation. IMPORTANT - ensure you use a key
-     * and IV size appropriate for your cipher
-     * In this example we are using 256 bit AES (i.e. a 256 bit key). The
-     * IV size for *most* modes is the same as the block size. For AES this
-     * is 128 bits
-     */
 
     if(1 != EVP_EncryptInit_ex(ctx, EVP_aes_256_ctr(), NULL, key, iv))
         return -1;
-
-    /*
-     * Provide the message to be encrypted, and obtain the encrypted output.
-     * EVP_EncryptUpdate can be called multiple times if necessary
-     */
     if(1 != EVP_EncryptUpdate(ctx, ciphertext, &len, plaintext, plaintext_len))
         return -1;
     ciphertext_len = len;
-
-    /*
-     * Finalise the encryption. Further ciphertext bytes may be written at
-     * this stage.
-     */
     if(1 != EVP_EncryptFinal_ex(ctx, ciphertext + len, &len))
         return -1;
 
     ciphertext_len += len;
-
-    /* Clean up */
     EVP_CIPHER_CTX_free(ctx);
+
+    if(debugs && 0x20){
+      fprintf(stderr, "RET: encrypt- plaintext_len:%d, first 4 of key: %02x%02x, iv:%s, debugs:%ld\n", plaintext_len, key[0],key[1], iv, debugs);
+    }
 
     return ciphertext_len;
 }
