@@ -3,52 +3,62 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <openssl/sha.h>
 #include <openssl/conf.h>
 #include <openssl/evp.h>
 #include <openssl/err.h>
+#include <sys/vfs.h>
 #include "functions.h"
 #include "macros.h"
-
+#include <sys/statfs.h>
 /* 
  TODO:
-
-  add hashed password to outfile
   add debug statements in functions.c
   cleaup functions.c comments/code
-  why isnt debug() working in functions.c?
+  
+  MORE DEBUG STATEMENTS
+  MORE DEBUG STATEMENTS
+  MORE DEBUG STATEMENTS
+
+  HEADER FILE DEPENDENCIES?
+
+  TEST FOR PRESERVE OUTFILE ON FAILURE
+
+  SHORT WRITE?
+  CREATE OUTFILE IF NONEXISTANT
   
 
-  preserve outfile on failure?
-  same in/out file?
-  relative pathnames / absolute ones?
+  EXTRA CREDIT -i FLAG NOT DECRYPTING OR ENCRYPTING CORRECTLY
 
 
 */
 
-/* Debug value 0x01 (1d): print a message on immediate entry and right before
+/* DBG_ENTEXIT 0x01 (1d): print a message on immediate entry and right before
   exit to every function in your code that you write, including main(), but
   not library calls you call.  Print the name of the function and whether
   you're entering or exiting it.
 
-- Debug value 0x02 (2d): print right before and right after calling any
+- DBG_LIB 0x02 (2d): print right before and right after calling any
   library call (e.g., from libc, libssl, etc.).  Print the function name and
   whether you're before or after calling it.
 
-- Debug value 0x04 (4d): print right before and right after calling any
+- DBG_SYSCALL 0x04 (4d): print right before and right after calling any
   system call (e.g., open, read, write, close).  Print the syscall name and
   whether you're before or after calling it.
 
-- Debug value 0x10 (16d): print also arguments to any function for debug
+- DBG_ARGS 0x10 (16d): print also arguments to any function for debug
   values 0x1 (upon entry), 0x2 (right before), and 0x4 (right before).
 
-- Debug value 0x20 (32d): print also return values (and errors if any) for
+- DBG_RET 0x20 (32d): print also return values (and errors if any) for
   any function for debug values 0x1 (right before return), 0x2 (right
   after), and 0x4 (right after). 
   */
+
 int main(int argc, char** argv)
 {  
-  int bufsize = getpagesize(); // probably 4K
+  int bufsize = getpagesize();
   long dbg_input = 0;
   int len = bufsize;
   void *buf = NULL, *preservebuf = NULL;
@@ -58,25 +68,41 @@ int main(int argc, char** argv)
   int passfile = -1, safeflag = -1;
   int crypt = -1;
 	unsigned char *key = NULL;
+  unsigned char *iv = (unsigned char *)"0";
+
 
   int opt;
   extern char *optarg;
   extern char *optarg;
   extern int optind, opterr, optopt;
   
-  while((opt = getopt(argc, argv, ":p:hvD:eds")) != -1)  
+  while((opt = getopt(argc, argv, ":p:hvD:edi:s")) != -1)  
   {  
     switch(opt)  
     {  
+      case 'i':
+          if(EC == 0){
+            fprintf(stderr, "Extra credit is not currently enabled. Try make clean & make extracredit=1\n");
+            retval = 103;
+            goto out;
+          }
+          iv = (unsigned char*)optarg;
+          debug("new iv value: %s\n", iv);
+          break;
       case 's':
           safeflag = 1;
+          if(EC == 0){
+            fprintf(stderr, "Extra credit is not currently enabled. Try make clean & make extracredit=1\n");
+            retval = 102;
+            goto out;
+          }
           debug("safe flag provided. prompt for pass twice\n");
           break;
       case 'p':  
           password = optarg;
           break;  
       case 'h':  
-          fprintf(stderr, "error: a simple usage line on stderr and exit with a non-zero status code.\n"); 
+          PRINTUSAGE;
           retval = 14;
           goto out; 
           break;  
@@ -132,7 +158,78 @@ int main(int argc, char** argv)
         if(optind == j)
           infile = argv[j];
         else /* if (optind+1 == j) */
+        {
           outfile = argv[j];
+          //COMPARE INFILE AND OUTFILE TO MAKE SURE DIFF FILES
+          static struct stat src, dst;
+          static struct statfs srcb, dst2;
+          int errck;
+          DBG_SYSCALL(dbg_input, "SYSCALL: Before stat()\n");
+          if((dbg_input & 0x10) && (dbg_input & 0x04))
+            fprintf(stderr, "ARGS:Before stat() infile: %s\n", infile);
+          errck = stat(infile, &src);
+          DBG_SYSCALL(dbg_input, "SYSCALL: After stat()\n");
+          if (errck < 0) {
+              retval = 207;
+              goto out;
+          }
+          if((dbg_input & 0x20) && (dbg_input & 0x04))
+            fprintf(stderr, "RET: stat() src ID: %lu, src Inode: %lu\n", src.st_dev, src.st_ino);
+
+          DBG_SYSCALL(dbg_input, "SYSCALL: Before stat()\n");
+          if((dbg_input & 0x10) && (dbg_input & 0x04))
+            fprintf(stderr, "ARGS:Before stat() outfile: %s\n", outfile);
+          errck = stat(outfile, &dst);
+          if(errno == ENOENT){
+            debug("ENOENT. ASSUMTION FILE DOES NOT EXIST. CREATE.");
+          }
+          else
+          {
+            if (errck < 0) {
+                retval = 206;
+                goto out;
+            }
+            DBG_SYSCALL(dbg_input, "SYSCALL: After stat()\n");
+            if((dbg_input & 0x20) && (dbg_input & 0x04))
+              fprintf(stderr, "RET: stat() dst ID: %lu, dst Inode: %lu\n", dst.st_dev, dst.st_ino);
+            
+            if ((src.st_dev == dst.st_dev) && (src.st_ino == dst.st_ino)) {
+              //ID of device && Inode number match. Check further
+              DBG_SYSCALL(dbg_input, "SYSCALL: Before statfs()\n");
+              if((dbg_input & 0x10) && (dbg_input & 0x04))
+                fprintf(stderr, "ARGS:Before statfs() infile: %s\n", infile);
+              errck = statfs(infile, &srcb);
+              if (errck < 0) {
+                  retval = 208;
+                  goto out;
+              }
+              DBG_SYSCALL(dbg_input, "SYSCALL: After statfs()\n");
+              if((dbg_input & 0x20) && (dbg_input & 0x04))
+                fprintf(stderr, "RET: statfs() src ID1: %d, src ID2: %d\n", srcb.f_fsid.__val[0], srcb.f_fsid.__val[1]);
+            
+              DBG_SYSCALL(dbg_input, "SYSCALL: Before statfs()\n");
+              if((dbg_input & 0x10) && (dbg_input & 0x04))
+                fprintf(stderr, "ARGS:Before statfs() outfile: %s\n", outfile);
+
+              errck = statfs(outfile, &dst2);
+              if (errck < 0) {
+                  retval = 209;
+                  goto out;
+              }
+              DBG_SYSCALL(dbg_input, "SYSCALL: After statfs()\n");
+              if((dbg_input & 0x20) && (dbg_input & 0x04))
+                fprintf(stderr, "RET: statfs() dst ID1: %d, dst ID2: %d\n", dst2.f_fsid.__val[0], dst2.f_fsid.__val[1]);
+            
+              if((srcb.f_fsid.__val[0] == dst2.f_fsid.__val[0]) && (srcb.f_fsid.__val[1] == dst2.f_fsid.__val[1]))
+              {
+                //filesystem ID matches. must be same files. exit
+                fprintf(stderr, "Files match. Exiting.\n");
+                retval = 210;
+                goto out;
+              }
+            } 
+          }
+        }
       }
     }
   }
@@ -354,7 +451,6 @@ int main(int argc, char** argv)
   if((dbg_input & 0x20) && (dbg_input & 0x02) && password != NULL)
     fprintf(stderr, "RET: SHA256- pkey:%04x \n", key[0]);
 
-  unsigned char *iv = (unsigned char *)"0";
   unsigned char ciphertext[4096];
 
   DBG_LIB(dbg_input,"LIB: Before free \n");
@@ -390,14 +486,15 @@ int main(int argc, char** argv)
   if(infile_stdin == 0)
     fd1 = STDIN_FILENO;
    if(outfile_stdin == 0)
-    fd2 = STDIN_FILENO;
+    fd2 = STDOUT_FILENO;
 
   DBG_ENTEXIT(dbg_input, "ENTEXIT: Before wrapper function readWriteFile\n"); 
 
-   /*  DBG_ARGS(dbg_input, "Args for readWriteFile- len:%d dbg_input:%x key:%02x
-    ciphertext:%s crypt:%d \n", len, dbg_input, key, ); */
-  if(readWriteFile(fd1, buf, len, fd2, dbg_input, key, iv, ciphertext, crypt) !=0 )
+  int t2;
+  
+  if((t2 = readWriteFile(fd1, buf, len, fd2, dbg_input, key, iv, ciphertext, crypt)) !=0 )
   {
+    debug("t2: %d\n", t2);
     retval = 24;
     goto out;
   }
@@ -440,7 +537,6 @@ out:
   if (fd4 >= 0)
     close(fd4);
   DBG_SYSCALL(dbg_input, "SYSCALL: After close() fd4\n");
-
   if (buf != NULL)
     free(buf);
   if(preservebuf != NULL)

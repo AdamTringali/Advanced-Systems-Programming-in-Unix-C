@@ -11,9 +11,11 @@ CFLAGS = -g -Wall -Werror -O2 -DDEBUG1
 
 endif
 
+filesec: main.o functions.o macros.h
+	gcc main.o functions.o -o filesec $(LDFLAGS)
 
-filesec: main.o macros.h
-	gcc main.o functions.c -o filesec $(LDFLAGS)
+functions.o: functions.c functions.h
+	$(CC) $(CFLAGS) $(DEBUG) -c functions.c 
 
 main.o: main.c
 	$(CC) $(CFLAGS) $(DEBUG) -c main.c 

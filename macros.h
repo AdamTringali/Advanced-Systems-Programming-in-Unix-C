@@ -11,7 +11,7 @@
 #ifndef _MYDEBUG_H
 #define _MYDEBUG_H
 #ifdef MYDEBUG
-#define debug(...) printf(__VA_ARGS__)
+#define debug(...) fprintf(stderr, __VA_ARGS__)
 #else
 #define debug(...)
 #endif
@@ -26,6 +26,18 @@
 #define EC 0
 #endif
 #endif 
+
+#define PRINTUSAGE fprintf(stderr, "filesec [-devh] [-D DBGVAL] [-p PASSFILE] [-s] infile outfile \n \
+-d: decrypt \n \
+-e: encrypt \n \
+-v: version \n \
+-h: help message \n \
+-D [arg]: Debug value \n \
+-p [arg]: file containing password \n \
+-s: prompts user for password twice \n \
+infile: file to read from \n \
+outfile: file to write to\n"); 
+
 
 #define DBG_NONE 0x00
 
