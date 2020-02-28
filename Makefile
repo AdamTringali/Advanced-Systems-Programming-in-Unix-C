@@ -20,7 +20,7 @@ functions.o: functions.c functions.h
 main.o: main.c
 	$(CC) $(CFLAGS) $(DEBUG) -c main.c 
 
-tests:
+tests: filesec
 	sh shell_scripts/test1.sh
 	sh shell_scripts/test2.sh
 	sh shell_scripts/test3.sh

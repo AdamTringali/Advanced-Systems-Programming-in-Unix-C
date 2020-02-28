@@ -35,6 +35,7 @@
 -D [arg]: Debug value \n \
 -p [arg]: file containing password \n \
 -s: prompts user for password twice \n \
+-i [arg]: Initialization Vector value \n \
 infile: file to read from \n \
 outfile: file to write to\n"); 
 

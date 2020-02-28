@@ -1,7 +1,7 @@
 CSE-376 (Spring 2020) Homework Assignment #1
+Author: Adam Tringali, SBU ID: 111321401
 
-filesec [-devh] [-D DBGVAL] [-p PASSFILE] [-s] infile outfile
-
+filesec [-devh] [-D DBGVAL] [-p PASSFILE] [-s] infile outfilels
 
 to run with extra credit do:
 make clean
@@ -17,21 +17,29 @@ Used as a guide for encryption and decryption. Encrypt & decrypt functions
 are similiar, calls to those functions are different. 
 
 INCLUDED:
+shell_scripts folder: a series of test /bin/sh shell scripts to test that my program runs
+    as expected
+    test1.sh, test2.sh(incomplete), test3.sh
+    run scripts by doing 'make tests'
 files folder: has in.txt, out.txt and pass.txt
     in.txt has some sample input
     pass.txt contains a password and a newline. Password is from [0] to [\n]
     pass2.txt contains a different password from pass.txt
 Extra Credit: 
+    ONLY ACTIVE WHEN 'make extracredit=1' HAS BEEN DONE
     [A] - an option [-s] (safe) which will cause the program to prompt for
     the user password twice. If the passwords didn't match, abort with an appropriate
     error.
+    [B] - an option [i] which will utilize the Initialization Vector (IV)
+        - -i flag is working as expected (only on extracredit mode) but issues with encrytion/decryption so I disabled it 
+            from modifying the actual iv value.
 NOTES:
     Some functions have been omitted from the ARGS/RET Debug options because 
     I deemed them unnecessary.
     In addition to omitting some unnecessary calls from the Debugs, some may have been
     looked over because of the excessive amount of debug statements. 
 
-to print my debug statements do:
+to print my debug statements do: (some removed before submission)
 make clean
 make debug
 

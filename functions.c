@@ -32,33 +32,42 @@ int readWriteFile(int fd1, void* buf , int len, int fd2, long debugs,
 
   if(key != NULL && crypt == 2)//DECRYPT, GET/STORE KEY 
   {
-    DBG_SYSCALL(debugs, "Before read()\n");
+    DBG_SYSCALL(debugs, "SYSCALL: Before read()\n");
+    if((debugs & 0x10) && (debugs & 0x04))
+      fprintf(stderr, "ARGS: (SHA-key) read-fd: %d\n", fd1);
     blocksz = read(fd1, buf, 32);
     DBG_SYSCALL(debugs, "After read()\n");
-      if(blocksz == 0){
-        retval = 56; 
-        return retval;
-      }
-      DBG_LIB(debugs, "Before malloc\n");
-      shapass = malloc(64);
-      DBG_LIB(debugs, "After malloc\n");
+    if((debugs & 0x20) && (debugs & 0x04))
+      fprintf(stderr, "RET: read-fd: %d\n", fd1);
+    if(blocksz == 0){
+      retval = 56; 
+      return retval;
+    }
+    DBG_LIB(debugs, "LIB: Before malloc\n");
+    shapass = malloc(64);
+    DBG_LIB(debugs, "LIB: After malloc\n");
 
-      if(shapass == NULL)
-      {
-        if(debugs && 0x20)
-          fprintf(stderr, "Malloc failed. Exiting.");
-        retval = 57;
-        return retval;
-      }
-      DBG_LIB(debugs, "Before memcpy - storing [key] into buffer\n");
-      memcpy(shapass, buf, 32);
-      DBG_LIB(debugs, "After memcpy - storing [key] into buffer\n");
-     
+    if(shapass == NULL)
+    {
+      if(debugs && 0x20)
+        fprintf(stderr, "Malloc failed. Exiting.\n");
+      retval = 57;
+      return retval;
+    }
+    DBG_LIB(debugs, "Before memcpy - storing [key] into buffer\n");
+    if((debugs & 0x10) && (debugs & 0x02))
+      fprintf(stderr, "ARGS: memcpy-shapass: %s\n", shapass);
+    memcpy(shapass, buf, 32);
+    DBG_LIB(debugs, "After memcpy - storing [key] into buffer\n");
+    if((debugs & 0x20) && (debugs & 0x02))
+      fprintf(stderr, "RET: memcpy-shapass: %s\n", shapass);
+    
 
   }
 
-  DBG_SYSCALL(debugs, "Before read().\n");
-
+  DBG_SYSCALL(debugs, "SYSCALL: Before read().\n");
+  if((debugs & 0x10) && (debugs & 0x04))
+    fprintf(stderr, "ARGS: read-fd1: %d, len: %d\n", fd1, len);
   while((blocksz = read(fd1, buf, len)) > 0 ){
 
     if (blocksz < 0) { // failed
@@ -70,7 +79,7 @@ int readWriteFile(int fd1, void* buf , int len, int fd2, long debugs,
 
     check_partial = 0;
 
-    DBG_SYSCALL(debugs, "Before write(2)\n");
+    DBG_SYSCALL(debugs, "SYSCALL: Before write(2)\n");
 
     while(check_partial < blocksz)
     {
@@ -154,9 +163,15 @@ int readWriteFile(int fd1, void* buf , int len, int fd2, long debugs,
         check_partial = check_partial + writeval;
       }
     }       
-    DBG_SYSCALL(debugs, "After write()...\n");
+    DBG_SYSCALL(debugs, "SYSCALL: After write()...\n");
+    if((debugs & 0x20) && (debugs & 0x04))
+      fprintf(stderr, "RET: write-fd: %d, (5)buf: %.*s", fd2, 5, (char *)buf);
+  
   }
-  DBG_SYSCALL(debugs, "After read().\n");
+  DBG_SYSCALL(debugs, "SYSCALL: After read().\n");
+  if((debugs & 0x20) && (debugs & 0x04))
+    fprintf(stderr, "RET: read-fd1: %d, len: %d, buf:%.*s\n", fd1, len, 5, (char*)buf);
+  
 
 
   if((debugs & 0x20) && (debugs & 0x01))
@@ -176,7 +191,7 @@ int readWriteFile(int fd1, void* buf , int len, int fd2, long debugs,
 int decrypt(unsigned char *ciphertext, int ciphertext_len, unsigned char *key,
             unsigned char *iv, unsigned char *plaintext, long debugs)
 {
-  DBG_ENTEXIT(debugs, "Entering decrypt()");
+  DBG_ENTEXIT(debugs, "ENTEXIT: Entering decrypt()\n");
   if((debugs & 0x10) && (debugs & 0x01))
   {
     fprintf(stderr, "ARGS: decrypt- ciphertext_len: %d, first 4 of key: %02x%02x, iv: %s, debugs: %ld\n", 
@@ -210,7 +225,7 @@ int decrypt(unsigned char *ciphertext, int ciphertext_len, unsigned char *key,
     plaintext_len += len;
 
     EVP_CIPHER_CTX_free(ctx);
-    DBG_ENTEXIT(debugs, "Exiting decrypt()");
+    DBG_ENTEXIT(debugs, "ENTEXIT: Exiting decrypt()");
 
     if((debugs & 0x20) && (debugs & 0x01)){
       fprintf(stderr, "RET: decrypt- ciphertext_len:%d, first 4 of key: %02x%02x, iv:%s, debugs:%ld\n", ciphertext_len, key[0],key[1], iv, debugs);
@@ -222,7 +237,7 @@ int decrypt(unsigned char *ciphertext, int ciphertext_len, unsigned char *key,
 int encrypt(unsigned char *plaintext, int plaintext_len, unsigned char *key,
   unsigned char *iv, unsigned char *ciphertext, long debugs)
 {
-    DBG_ENTEXIT(debugs, "Entering encrypt()");
+    DBG_ENTEXIT(debugs, "ENTEXIT: Entering encrypt()\n");
 
     if((debugs & 0x10) && (debugs & 0x01))
   {
@@ -260,7 +275,7 @@ int encrypt(unsigned char *plaintext, int plaintext_len, unsigned char *key,
     /* Clean up */
     EVP_CIPHER_CTX_free(ctx);
 
-    DBG_ENTEXIT(debugs, "Exiting encrypt()");
+    DBG_ENTEXIT(debugs, "ENTEXIT: Exiting encrypt()\n");
 
     if((debugs & 0x20) && (debugs & 0x01)){
       fprintf(stderr, "RET: encrypt- plaintext_len:%d, first 4 of key: %02x%02x, iv:%s, debugs:%ld\n", plaintext_len, key[0],key[1], iv, debugs);

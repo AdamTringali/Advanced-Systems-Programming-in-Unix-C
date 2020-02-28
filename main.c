@@ -15,44 +15,8 @@
 #include <sys/statfs.h>
 /* 
  TODO:
-  add debug statements in functions.c
-  cleaup functions.c comments/code
-  
-  MORE DEBUG STATEMENTS
-  MORE DEBUG STATEMENTS
-  MORE DEBUG STATEMENTS
-
-  HEADER FILE DEPENDENCIES?
-
-  TEST FOR PRESERVE OUTFILE ON FAILURE
-
-  SHORT WRITE?  
-
   EXTRA CREDIT -i FLAG NOT DECRYPTING OR ENCRYPTING CORRECTLY
-
-
 */
-
-/* DBG_ENTEXIT 0x01 (1d): print a message on immediate entry and right before
-  exit to every function in your code that you write, including main(), but
-  not library calls you call.  Print the name of the function and whether
-  you're entering or exiting it.
-
-- DBG_LIB 0x02 (2d): print right before and right after calling any
-  library call (e.g., from libc, libssl, etc.).  Print the function name and
-  whether you're before or after calling it.
-
-- DBG_SYSCALL 0x04 (4d): print right before and right after calling any
-  system call (e.g., open, read, write, close).  Print the syscall name and
-  whether you're before or after calling it.
-
-- DBG_ARGS 0x10 (16d): print also arguments to any function for debug
-  values 0x1 (upon entry), 0x2 (right before), and 0x4 (right before).
-
-- DBG_RET 0x20 (32d): print also return values (and errors if any) for
-  any function for debug values 0x1 (right before return), 0x2 (right
-  after), and 0x4 (right after). 
-  */
 
 int main(int argc, char** argv)
 {  
@@ -67,10 +31,7 @@ int main(int argc, char** argv)
   int crypt = -1;
 	unsigned char *key = NULL;
   unsigned char *iv = (unsigned char *)"0";
-
-
   int opt;
-  extern char *optarg;
   extern char *optarg;
   extern int optind, opterr, optopt;
   
@@ -84,8 +45,8 @@ int main(int argc, char** argv)
             retval = 103;
             goto out;
           }
-          iv = (unsigned char*)optarg;
-          debug("new iv value: %s\n", iv);
+          //iv = (unsigned char*)optarg;
+          //debug("new iv value: %s\n", iv);
           break;
       case 's':
           safeflag = 1;
@@ -134,7 +95,7 @@ int main(int argc, char** argv)
 
           break;    
       case '?':  
-          fprintf(stderr, "unknown option: %c\n", optopt); 
+          PRINTUSAGE;
           retval = 11;
           goto out; 
     }  
