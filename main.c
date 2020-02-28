@@ -26,9 +26,7 @@
 
   TEST FOR PRESERVE OUTFILE ON FAILURE
 
-  SHORT WRITE?
-  CREATE OUTFILE IF NONEXISTANT
-  
+  SHORT WRITE?  
 
   EXTRA CREDIT -i FLAG NOT DECRYPTING OR ENCRYPTING CORRECTLY
 
@@ -495,7 +493,7 @@ int main(int argc, char** argv)
   if((t2 = readWriteFile(fd1, buf, len, fd2, dbg_input, key, iv, ciphertext, crypt)) !=0 )
   {
     debug("t2: %d\n", t2);
-    retval = 24;
+    retval = t2;
     goto out;
   }
   DBG_ENTEXIT(dbg_input, "ENTEXIT: After wrapper function readWriteFile\n");  
@@ -537,11 +535,14 @@ out:
   if (fd4 >= 0)
     close(fd4);
   DBG_SYSCALL(dbg_input, "SYSCALL: After close() fd4\n");
+  DBG_LIB(dbg_input, "LIB: Before free() buf1\n");
   if (buf != NULL)
     free(buf);
+  DBG_LIB(dbg_input, "LIB: After free() buf1\n");
+  DBG_LIB(dbg_input, "LIB: Before free() buf2\n");
   if(preservebuf != NULL)
     free(preservebuf);
-
+  DBG_LIB(dbg_input, "LIB: After free() buf2\n");
   DBG_ENTEXIT(dbg_input, "ENTEXIT: Exiting main\n");  
   exit(retval);
 

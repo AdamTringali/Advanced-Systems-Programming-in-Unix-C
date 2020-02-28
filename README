@@ -17,9 +17,10 @@ Used as a guide for encryption and decryption. Encrypt & decrypt functions
 are similiar, calls to those functions are different. 
 
 INCLUDED:
-tests folder: has in.txt, out.txt and pass.txt
+files folder: has in.txt, out.txt and pass.txt
     in.txt has some sample input
     pass.txt contains a password and a newline. Password is from [0] to [\n]
+    pass2.txt contains a different password from pass.txt
 Extra Credit: 
     [A] - an option [-s] (safe) which will cause the program to prompt for
     the user password twice. If the passwords didn't match, abort with an appropriate

@@ -70,7 +70,7 @@ int readWriteFile(int fd1, void* buf , int len, int fd2, long debugs,
 
     check_partial = 0;
 
-    DBG_SYSCALL(debugs, "Before write()");
+    DBG_SYSCALL(debugs, "Before write(2)\n");
 
     while(check_partial < blocksz)
     {
@@ -154,9 +154,9 @@ int readWriteFile(int fd1, void* buf , int len, int fd2, long debugs,
         check_partial = check_partial + writeval;
       }
     }       
-    DBG_SYSCALL(debugs, "After write()");
+    DBG_SYSCALL(debugs, "After write()...\n");
   }
-  DBG_SYSCALL(debugs, "After read()");
+  DBG_SYSCALL(debugs, "After read().\n");
 
 
   if((debugs & 0x20) && (debugs & 0x01))
