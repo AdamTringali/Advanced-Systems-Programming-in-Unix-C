@@ -2,43 +2,66 @@
 #include "header.h"
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
-char* list[] = {
-    "something",
-    "else",
-    "two"
-};
+char** reports;
+int len_reports;
 
 int main(int argc, char** argv)
 {  
-    int flags = 0x0;
-
-
-    int mallocVal = 0;
+    reports = malloc(10 * sizeof(char*));
+    len_reports = 0;
+    int freeVal, mallocVal, flags = 0x0;
     void* buf = NULL;
+    void* buf2 = NULL;
+
+    // ADDING CSV FORMAT TO LKREPORT LIST
+    int strlen = 500;
+    reports[len_reports] = malloc(strlen * sizeof(char));
+    strcpy(reports[len_reports++],"record_type,filename,fxname,line_nub,timestamp,ptr_passed,retval,size_or_flags,alloc_addr_returned");
+
     mallocVal = lkmalloc(10, &buf, flags);
-
-    printf("Mallocval: %d\n", mallocVal);
     if(mallocVal < 0){
-            printf("MallocVal error.");
+        printf("MallocVal error. Exiting.\n");
+        exit(1);
+    }
+
+    mallocVal = lkmalloc(20, &buf2, flags);
+    if(mallocVal < 0){
+        printf("MallocVal error (2). Exiting.\n");
+        exit(1);
+    }
+    buf2 = buf2 + 1;
+    freeVal = lkfree(&buf2, 0x1);
+    if(freeVal != 0)
+    {
+        if(errno == EINVAL)
+        {
+            printf("LKF_REF: ptr wassed was not exactly as allocated.");
+        }
+        else
+        {
+            fprintf(stderr,"free error (2). Exiting\n");
             exit(1);
+        }
     }
-    printf("%d:%p:",10, &buf);
-    unsigned char *ptr = buf;
-    for (int i = 0; i < 18; i++) {
-        printf("%02x ", (int)ptr[i]);
+    buf = buf + 1;
+    freeVal = lkfree(&buf, 0x1);
+    if(freeVal != 0)
+    {
+        if(errno == EINVAL)
+        {
+            printf("LKF_REF: ptr wassed was not exactly as allocated.");
+        }
+        else
+        {
+            fprintf(stderr,"free error (2). Exiting\n");
+            exit(1);
+        }
     }
-    printf("\n");
-
-    int freeVal = 0;
-    freeVal = lkfree(&buf, flags);
-    printf("Freeval: %d\n", freeVal);
-
-
-    printf("end of main\n");
 
     
-    //on_exit((void*)lkreport,(void*)list);
+    on_exit((void*)lkreport,(void*)reports);
 
     return 0;
 

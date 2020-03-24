@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS = 
+CFLAGS = -g
 # -g -Wall -Werror -O2 -DDEBUG1 -DEXTRACREDIT
 
 a: main.o LKmalloc.o
@@ -13,7 +13,6 @@ main.o: main.c
 
 valgrind:
 	valgrind --show-leak-kinds=all ./a
-
 
 clean: 
 	rm *.o a

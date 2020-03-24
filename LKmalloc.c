@@ -2,31 +2,23 @@
 #include <stdio.h>
 #include <string.h>
 #include "header.h"
+#include <time.h>
+#include <errno.h>
 
+extern char** reports;
+extern int len_reports;
 
 int lkmalloc(int size, void **ptr, int flags)
 {
 
-    on_exit((void*)lkreport,0);
-    // int header = 8;
-    // size += header;
-
-    printf("lkmalloc.c flags: %x\n", flags);
     if(flags & LKM_UNDER | flags & LKM_OVER){
         size += 8;
     }
-    
+
     *ptr = malloc(size);
+    
     if(*ptr == NULL)
         return -1;
-    char text[255];
-    sprintf(text, "%p\n",*ptr);
-    printf("test:%s\n",text);
-    //STORING MEM ADDY IN HEADER
-    // size_t int_value = (size_t)*ptr;
-    // printf("here1\n");
-    // memset(&ptr, int_value, 8);
-    // *ptr = *ptr + 8;
 
     // LKM_INIT - initalize memory being allocated to 0
     if(flags & LKM_INIT)
@@ -52,17 +44,63 @@ int lkmalloc(int size, void **ptr, int flags)
         *ptr = *ptr + 8;
     }
 
-    char text2[255];
-    sprintf(text2, "%p\n",*ptr);
-    printf("test2:%s\n",text2);
+
+    // ADDING REPORT TO THE LIST OF REPORTS
+    int strlen = 500;
+    reports[len_reports] = malloc(strlen * sizeof(char));
+
+    char address[255];
+    snprintf(address,sizeof(address), "lkmalloc,filename,fxname,line_nub,timestamp,ptr_passed,%d,size_or_flags,%p",size, *ptr);
+    memcpy(reports[len_reports++], address, sizeof(address));
 
     // RETURN ALLOC SIZE (includes upper/lower 8 bytes)
     return size;
 }
 
 
+
 int lkfree(void **ptr, int flags)
 {
+
+    int strlen = 500;
+    reports[len_reports] = malloc(strlen * sizeof(char));
+
+    char address[255];
+    snprintf(address,sizeof(address), "lkfree,filename,fxname,line_nub,timestamp,ptr_passed,retval,size_or_flags,%p", *ptr);
+    memcpy(reports[len_reports++], address, sizeof(address));
+
+    //LKF_REG - free only if the ptr passed was exactly as alloc
+    if(!flags & !LKF_REG)
+    { // free only if the ptr passed was exactly as was allocated
+        int found = 0;
+        for(int i = 1; i < len_reports; i++){
+            char *t1 = strdup(reports[i]);
+            char *item = strtok(t1, ",");
+            if(strcmp("lkmalloc", item) == 0)
+            {//MALLOC RECORD, CHECK ALLOC_ADDR_RETURNED 
+                for(int i = 0; i < 8; i++)
+                    item = strtok(NULL, ",");
+                
+                //NOW ITEM CONTAINS THE ALLOC_ADDR_RETURNED ADDRESS. COMPARE WITH PTR ADDRESS
+                if(strcmp(address, item) == 0)
+                    found = 1;
+            }
+            free(t1);
+        }
+        if(found == 0){
+            //CAUSES MEMORY LEAK
+            errno = EINVAL;
+            return 1;
+        }
+    }
+
+    //LKF_APPROX - free alloc even if what is passed is in the middle of a valid alloc.
+    if(flags & LKF_APPROX)
+    {
+        printf("LKF_APPROX. ptr addy: %s\n", address);
+        *ptr = *ptr - 1;
+    }
+
     if(ptr == NULL)
         return 99;
 
@@ -78,15 +116,15 @@ int lkfree(void **ptr, int flags)
 
 int lkreport(int fd, void* flags)
 {
-    printf("\n\n -------lkreport------- \n");
+
+
+    printf("\n -------lkreport------- \n");
     //dprintf - prints to file descriptor instead of i/o stream
-    
-    // for(int i = 0; i < 3; i++){
-    //     printf("%d,%s\n", fd, ((char**)flags)[i]);
+    printf("len_reports: %d\n", len_reports);
 
-    // }
-
-    //record_type,filename,fxname,line_num,timestamp,ptr_passed,retval,size_or_flags,
-    //alloc_addr_returned
-
+    for(int i = 0; i < len_reports; i++){
+        printf("%s\n", reports[i]);
+        free(reports[i]);
+    }
+    free(reports);
 }
