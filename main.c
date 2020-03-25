@@ -26,32 +26,32 @@ int main(int argc, char** argv)
         exit(1);
     }
 
-    mallocVal = lkmalloc(20, &buf2, flags);
-    if(mallocVal < 0){
-        printf("MallocVal error (2). Exiting.\n");
-        exit(1);
-    }
-    buf2 = buf2 + 1;
-    freeVal = lkfree(&buf2, 0x1);
-    if(freeVal != 0)
-    {
-        if(errno == EINVAL)
-        {
-            printf("LKF_REF: ptr wassed was not exactly as allocated.");
-        }
-        else
-        {
-            fprintf(stderr,"free error (2). Exiting\n");
-            exit(1);
-        }
-    }
+//     mallocVal = lkmalloc(20, &buf2, flags);
+//     if(mallocVal < 0){
+//         printf("MallocVal error (2). Exiting.\n");
+//         exit(1);
+//     }
+//    // buf2 = buf2 + 1;
+//     freeVal = lkfree(&buf2, 0x2);
+//     if(freeVal != 0)
+//     {
+//         if(errno == EINVAL)
+//         {
+//             printf("LKF_REF: ptr wassed was not exactly as allocated (1).\n");
+//         }
+//         else
+//         {
+//             fprintf(stderr,"free error (2). Exiting\n");
+//             exit(1);
+//         }
+//     }
     buf = buf + 1;
-    freeVal = lkfree(&buf, 0x1);
+    freeVal = lkfree(&buf, 0x2);
     if(freeVal != 0)
     {
         if(errno == EINVAL)
         {
-            printf("LKF_REF: ptr wassed was not exactly as allocated.");
+            printf("LKF_REF: ptr wassed was not exactly as allocated (2).\n");
         }
         else
         {

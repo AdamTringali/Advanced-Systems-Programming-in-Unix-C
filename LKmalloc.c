@@ -61,13 +61,14 @@ int lkmalloc(int size, void **ptr, int flags)
 
 int lkfree(void **ptr, int flags)
 {
-
+    
+    int ret = 0;
     int strlen = 500;
     reports[len_reports] = malloc(strlen * sizeof(char));
 
     char address[255];
-    snprintf(address,sizeof(address), "lkfree,filename,fxname,line_nub,timestamp,ptr_passed,retval,size_or_flags,%p", *ptr);
-    memcpy(reports[len_reports++], address, sizeof(address));
+    snprintf(address, sizeof(address), "%p", *ptr);
+
 
     //LKF_REG - free only if the ptr passed was exactly as alloc
     if(!flags & !LKF_REG)
@@ -95,10 +96,42 @@ int lkfree(void **ptr, int flags)
     }
 
     //LKF_APPROX - free alloc even if what is passed is in the middle of a valid alloc.
+    
     if(flags & LKF_APPROX)
     {
         printf("LKF_APPROX. ptr addy: %s\n", address);
-        *ptr = *ptr - 1;
+        //*ptr = *ptr - 1;
+        int found = 0;
+        char *t1, *item, *potential_real, *potential_wrong;
+        int size = 0;
+        for(int i = 1; i < len_reports; i++){
+            t1 = strdup(reports[i]);
+            item = strtok(t1, ",");
+            if(strcmp("lkmalloc", item) == 0)
+            {//MALLOC RECORD, CHECK ALLOC_ADDR_RETURNED 
+                for(int i = 0; i < 6; i++)
+                    item = strtok(NULL, ",");
+                size = atoi(item);
+                for(int i = 0; i < 2; i++)
+                    item = strtok(NULL, ",");
+                //NOW ITEM CONTAINS THE ALLOC_ADDR_RETURNED ADDRESS. COMPARE WITH PTR ADDRESS
+
+                int real_address;// = atoi(item);
+                int ptr_address;
+                sscanf(item,"%x", &real_address);
+                sscanf(address,"%x", &ptr_address);
+                if((ptr_address - real_address) != 0)
+                    if(ptr_address > real_address){
+                        if((ptr_address - real_address) <= size && real_address == (ptr_address - (ptr_address - real_address))  )
+                        {
+                            *ptr = *ptr - (ptr_address - real_address);
+                            printf("new addy: %p\n", *ptr);
+                        }
+                    }
+            }
+            free(t1);
+        }
+
     }
 
     if(ptr == NULL)
@@ -110,6 +143,8 @@ int lkfree(void **ptr, int flags)
     }
 
     free(*ptr);
+    snprintf(address,sizeof(address), "lkfree,filename,fxname,line_nub,timestamp,ptr_passed,retval,size_or_flags,(null)");
+    memcpy(reports[len_reports++], address, sizeof(address));
 
     return 0;
 }
@@ -118,9 +153,9 @@ int lkreport(int fd, void* flags)
 {
 
 
-    printf("\n -------lkreport------- \n");
+    printf("\n                                -------lkreport------- \n");
     //dprintf - prints to file descriptor instead of i/o stream
-    printf("len_reports: %d\n", len_reports);
+    //printf("len_reports: %d\n", len_reports);
 
     for(int i = 0; i < len_reports; i++){
         printf("%s\n", reports[i]);
