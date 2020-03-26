@@ -14,6 +14,82 @@ extern char* file_name;
 extern char *fxn_name;
 extern int line_num;
 
+int getMissingNo(int a[], int n)
+{
+    int i, total;
+    total = (n+1)*(n+2)/2;
+    for(i = 0; i < n; i++)
+        total -= a[i];
+    return total;
+}
+
+
+int findleaks(int list[])
+{
+    int matches[len_reports*3];
+    int count = 0;
+    char *t1, *item, *current = NULL;
+    int index1 = -1;
+    
+    for(int i = 1; i < len_reports; i++){
+        //printf("i:%d\n",i);
+        //printf("r[%d]:%s\n",i,reports[i]);
+        t1 = strdup(reports[i]);
+        item = strtok(t1, ",");
+        if(strcmp("0", item) == 0 && current == NULL)
+        {
+            for(int k = 1; k < 8; k++){
+                item = strtok(NULL, ",");
+                //printf("item:%s\n", item);
+                }
+            current = strdup(item);
+            index1 = i;
+
+        }
+        if(strcmp("1", item) == 0 && current != NULL)
+        {
+            for(int k = 1; k < 6; k++)
+                item = strtok(NULL, ",");
+            if(strcmp(item,current) == 0)
+            {
+                //printf("found a match. adding index1: %d and index2: %d\n",index1, i);
+                matches[count++] = index1;
+                matches[count++] = i;
+                //dprintf(fd, "%s\n", reports[index1]);
+                //dprintf(fd, "%s\n", reports[i]);
+                free(current);
+                current = NULL;
+            }
+            
+
+        }
+        free(t1);
+        
+    }
+    if(current != NULL)
+    {
+        free(current);
+    }    
+
+    int finish[len_reports-1-count];
+    for(int i = 0; i < (len_reports -1 - count); i++)
+    {
+        int k = i;
+        while(matches[k] == (k+1) || finish[i-1] == (k+1))
+            k++;
+        finish[i] = (k+1);
+    }
+    //printf("finish: %d\n", finish[0]);
+    
+    
+    //list[0] = 2;
+    for(int i = 0; i < (len_reports-1-count); i++)
+        list[i] = finish[i];
+    return len_reports - 1 - count;
+}
+
+
+
 
 int lkmalloc(int size, void **ptr, int flags)
 {
@@ -69,7 +145,7 @@ int lkmalloc(int size, void **ptr, int flags)
     reports[len_reports] = malloc(strlen * sizeof(char));
 
     char address[255];
-    snprintf(address,sizeof(address), "0,%s,%s,%d,%ld.%ld,ptr_passed,%d,%d,%p", file_name,fxn_name,line_num,tv.tv_sec,tv.tv_usec,0,size, *ptr);
+    snprintf(address,sizeof(address), "0,%s,%s,%d,%ld.%ld,%d,%d,%p", file_name,fxn_name,line_num,tv.tv_sec,tv.tv_usec,0,size, *ptr);
     memcpy(reports[len_reports++], address, sizeof(address));
 
     return 0;
@@ -109,9 +185,8 @@ int lkfree(void **ptr, int flags)
             char *item = strtok(t1, ",");
             if(strcmp("0", item) == 0)
             {//MALLOC RECORD, CHECK ALLOC_ADDR_RETURNED 
-                for(int i = 0; i < 8; i++)
+                for(int i = 0; i < 7; i++)
                     item = strtok(NULL, ",");
-                
                 //NOW ITEM CONTAINS THE ALLOC_ADDR_RETURNED ADDRESS. COMPARE WITH PTR ADDRESS
                 if(strcmp(address, item) == 0)
                     found = 1;
@@ -139,15 +214,18 @@ int lkfree(void **ptr, int flags)
         item = strtok(t1, ",");
         if(strcmp("0", item) == 0)
         {//MALLOC RECORD, CHECK ALLOC_ADDR_RETURNED 
-            for(int i = 0; i < 7; i++)
+            for(int i = 0; i < 6; i++)
                 item = strtok(NULL, ",");
             size = atoi(item);
             for(int i = 0; i < 1; i++)
                 item = strtok(NULL, ",");
+            
+            
+
             //NOW ITEM CONTAINS THE ALLOC_ADDR_RETURNED ADDRESS. COMPARE WITH PTR ADDRESS
 
-            int real_address;// = atoi(item);
-            int ptr_address;
+            int real_address = 0;// = atoi(item);
+            int ptr_address = 0;
             sscanf(item,"%x", &real_address);
             sscanf(address,"%x", &ptr_address);
             if((ptr_address - real_address) != 0)
@@ -156,11 +234,13 @@ int lkfree(void **ptr, int flags)
                     if((ptr_address - real_address) <= size && real_address == (ptr_address - (ptr_address - real_address))  )
                     {
                         if(LKF_APPROX & flags){
-                            *ptr = *ptr - (ptr_address - real_address);
-                            // printf("LKF_APPROX. ptr addy: %s\n", address);
-                            // printf("new addy: %p\n", *ptr);
+                            int z = (ptr_address - real_address);
+                            *ptr = *ptr - z;
+                             //printf("LKF_APPROX. ptr addy: %s\n", address);
+                             //printf("difference %d\n",(ptr_address - real_address) );
+                             //printf("new addy: %p\n", *ptr);
 
-                            //LKF_WARN - print a warning if freeing with LKF_APPROX
+                            //LKF_WARN - print Fa warning if freeing with LKF_APPROX
                             if(flags & LKF_WARN)
                             {
                                 fprintf(stderr,"LKF_WARN: Trying to free something in the middle of an allocated memory chunk. LKF_APPROX fixed memory address.\n");
@@ -196,7 +276,7 @@ int lkfree(void **ptr, int flags)
     }
     else //if (ret == 56 || ret == 50)
     {
-        printf("ret: %d\n", ret);
+        //printf("re2t: %d\n", ret);
         if(ret == 50){
             ret = 0;
             char *passed_addr = strdup(address);
@@ -286,7 +366,13 @@ int lkreport(int fd, int flags)
         if(flags & LKR_SERIOUS)//PRINT MEMORY LEAKS.
         {
             dprintf(fd, "   LKR_SERIOUS     \n");
-        
+            int malloc_leaks[len_reports];
+            int num_malloc_leaks = findleaks(malloc_leaks);
+            //printf("num_malloc_leaks: %d\n", num_malloc_leaks);
+            for(int i = 0; i < num_malloc_leaks; i++)
+            {
+                dprintf(fd, "%s\n", reports[malloc_leaks[i]]);
+            }
             
         }
         if(flags & LKR_MATCH)
@@ -302,7 +388,7 @@ int lkreport(int fd, int flags)
                 item = strtok(t1, ",");
                 if(strcmp("0", item) == 0 && current == NULL)
                 {
-                    for(int k = 1; k < 9; k++){
+                    for(int k = 1; k < 8; k++){
                         item = strtok(NULL, ",");
                         //printf("item:%s\n", item);
                         }
@@ -332,6 +418,11 @@ int lkreport(int fd, int flags)
                 }
                 free(t1);
                 
+                
+            }
+            if(current != NULL)
+            {
+                free(current);
             }
         }
         dprintf(fd, "\n   All    \n");

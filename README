@@ -1,1 +1,6 @@
 Empty README for HW2
+
+Having trouble with error when:
+    malloc -> free -> malloc (same address) -> modify memory address -> free
+
+    
