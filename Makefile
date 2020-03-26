@@ -2,14 +2,14 @@ CC=gcc
 CFLAGS = -g
 # -g -Wall -Werror -O2 -DDEBUG1 -DEXTRACREDIT
 
-a: main.o LKmalloc.o
-	gcc main.o LKmalloc.o -o a
+a: main2.o LKmalloc.o
+	gcc main2.o LKmalloc.o -o a
 
-a.o: main.c header.h
+a.o: main2.c header.h
 	$(CC) $(CFLAGS) -c LKmalloc.c
 
-main.o: main.c
-	$(CC) $(CFLAGS) -c main.c 
+main2.o: main2.c
+	$(CC) $(CFLAGS) -c main2.c 
 
 valgrind:
 	valgrind --show-leak-kinds=all ./a
