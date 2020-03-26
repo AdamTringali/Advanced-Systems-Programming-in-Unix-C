@@ -24,7 +24,7 @@ int main(int argc, char** argv)
     reports[len_reports] = malloc(strlen * sizeof(char));
     strcpy(reports[len_reports++],"record_type,filename,fxname,line_nub,timestamp,ptr_passed,retval,size_or_flags,alloc_addr_returned");
 
-    on_exit((void*)lkreport,(void*)0x1);
+    on_exit((void*)lkreport,(void*)0x3);
 
    // for(int i = 0; i < 2; i++)
     //{
@@ -42,15 +42,6 @@ int main(int argc, char** argv)
             exit(1);
         }
 
-        log_info(file_name, fxn_name, line_num);
-        //buf += 1;
-        freeVal = lkfree(&buf, 0x1);
-        if(freeVal != 0)
-        {
-            printf("non 0 return val: ret:%d\n", freeVal);
-            exit(1);
-        }
-        printf("next round \n\n");
    
 
 
@@ -66,6 +57,15 @@ int main(int argc, char** argv)
         
     
 
+        log_info(file_name, fxn_name, line_num);
+        //buf += 1;
+        freeVal = lkfree(&buf, 0x1);
+        if(freeVal != 0)
+        {
+            printf("non 0 return val: ret:%d\n", freeVal);
+            exit(1);
+        }
+        printf("next round \n\n");
   
 
     exit(STDIN_FILENO);

@@ -14,62 +14,154 @@ extern char* file_name;
 extern char *fxn_name;
 extern int line_num;
 
-int getMissingNo(int a[], int n)
+int get_num_mallocs()
 {
-    int i, total;
-    total = (n+1)*(n+2)/2;
-    for(i = 0; i < n; i++)
-        total -= a[i];
-    return total;
+    int count = 0;
+    char *t1, *item = NULL;
+    for(int i = 0; i < len_reports; i++)
+    {
+        t1 = strdup(reports[i]);
+        item = strtok(t1, ",");
+        if(strcmp("0", item) == 0)
+            count++;
+        free(t1);
+    }
+
+    //printf("num_mallocs: %d\n", count);
+    return count;
 }
 
-
-int findleaks(int list[])
+int test3(int list[])
 {
-    int matches[len_reports*3];
+    int count = 0;
+    char *t1, *item = NULL;
+    char *memaddy = NULL;
+    int num_m = get_num_mallocs();
+    int index = 1;
+    int j;
+    int new = 1;
+    char **newlist = malloc(sizeof(char*) * len_reports);
+    memcpy(newlist, reports, sizeof(char*) * len_reports);
+    
+    for(int i = 0; i < num_m; i++)
+    {
+        for(j = new; j < len_reports; j++)
+        {
+            //printf("j:%d\n", j);
+            t1 = strdup(newlist[j]);
+            item = strtok(t1,",");
+            if(strcmp("0",item) == 0 && memaddy == NULL){
+                for(int z = 0; z < 7; z++)
+                    item = strtok(NULL, ",");
+                //ITEM NOW CONTAINS MEMADDY
+            // printf("item contains: %s\n", item);
+                index = j;
+                memaddy = strdup(item);
+                //continue;
+            }
+            //printf("memaddy: %s\n", memaddy);
+            if(strcmp("1", item) == 0 && memaddy != NULL)
+            {
+                for(int z = 0; z < 5; z++)
+                    item = strtok(NULL, ",");
+            // printf("item2 contains: %s, memaddy: %s\n", item, memaddy);
+                if(strcmp(memaddy,item) == 0)
+                {
+                    //MEMORY ADDY'S ARE SAME. FOUND A PAIR. CONTINUE TO INDEX(INDEX)
+                    //dprintf(fd, "%s\n", newlist[index]);
+                    //dprintf(fd, "%s\n", newlist[j]);
+                    list[count++] = index;
+                    list[count++] = j;
+                    newlist[index] = "x";
+                    newlist[j] = "x";
+                    free(memaddy);
+                    memaddy = NULL;
+                }
+                
+
+            }
+            free(t1);
+        //free t1, memaddy
+        }
+        if(memaddy != NULL)
+        {
+            //NOTHING FOUND??
+           // printf("nothign found \n");
+            free(memaddy);
+            memaddy = NULL;
+            new = index + 1;
+           // printf("set j: %d\n", new);
+        }
+
+    }
+    if(newlist != NULL)
+        free(newlist);
+    return count;
+}
+
+int findpairs(int list[])
+{
+    int r = get_num_mallocs();
+    int matches[r];
     int count = 0;
     char *t1, *item, *current = NULL;
     int index1 = -1;
-    
-    for(int i = 1; i < len_reports; i++){
-        //printf("i:%d\n",i);
-        //printf("r[%d]:%s\n",i,reports[i]);
-        t1 = strdup(reports[i]);
-        item = strtok(t1, ",");
-        if(strcmp("0", item) == 0 && current == NULL)
-        {
-            for(int k = 1; k < 8; k++){
-                item = strtok(NULL, ",");
-                //printf("item:%s\n", item);
-                }
-            current = strdup(item);
-            index1 = i;
-
-        }
-        if(strcmp("1", item) == 0 && current != NULL)
-        {
-            for(int k = 1; k < 6; k++)
-                item = strtok(NULL, ",");
-            if(strcmp(item,current) == 0)
+    for(int k = 0; k < r; k++){
+        for(int i = 1; i < len_reports; i++){
+            //printf("i:%d\n",i);
+            //printf("r[%d]:%s\n",i,reports[i]);
+            t1 = strdup(reports[i]);
+            item = strtok(t1, ",");
+            if(strcmp("0", item) == 0 && current == NULL)
             {
-                //printf("found a match. adding index1: %d and index2: %d\n",index1, i);
-                matches[count++] = index1;
-                matches[count++] = i;
-                //dprintf(fd, "%s\n", reports[index1]);
-                //dprintf(fd, "%s\n", reports[i]);
-                free(current);
-                current = NULL;
-            }
-            
+                int ck = 0;
+                for(int z = 0; z < count; z++)
+                    if(matches[z] == i)
+                        ck = 1;
+                if(ck == 0)
+                {
+                    for(int k = 1; k < 8; k++){
+                    item = strtok(NULL, ",");
+                    //printf("item:%s\n", item);
+                    }
+                    current = strdup(item);
+                    //printf("searching for %s\n", current);
 
-        }
-        free(t1);
+                    index1 = i;
+                }
+
+            }
+            if(strcmp("1", item) == 0 && current != NULL)
+            {
+                for(int k = 1; k < 6; k++)
+                    item = strtok(NULL, ",");
+                if(strcmp(item,current) == 0)
+                {
+                    //printf("found a match. adding index1: %d and index2: %d\n",index1, i);
+                    matches[count++] = index1;
+                    matches[count++] = i;
+                    free(current);
+                    current = NULL;
+                }
+            }
         
+            free(t1);
+        }
     }
     if(current != NULL)
     {
         free(current);
     }    
+
+    for(int i = 0; i < count; i++)
+        list[i] = matches[i];
+    return count;
+}
+
+int findleaks(int list[])
+{
+    int matches[len_reports];
+    int count = test3(matches);
 
     int finish[len_reports-1-count];
     for(int i = 0; i < (len_reports -1 - count); i++)
@@ -79,17 +171,12 @@ int findleaks(int list[])
             k++;
         finish[i] = (k+1);
     }
-    //printf("finish: %d\n", finish[0]);
-    
-    
-    //list[0] = 2;
+
     for(int i = 0; i < (len_reports-1-count); i++)
         list[i] = finish[i];
-    return len_reports - 1 - count;
+
+    return (len_reports-1-count);
 }
-
-
-
 
 int lkmalloc(int size, void **ptr, int flags)
 {
@@ -104,7 +191,7 @@ int lkmalloc(int size, void **ptr, int flags)
     gettimeofday(&tv, NULL);
 
 
-    if(flags & LKM_UNDER | flags & LKM_OVER){
+    if(flags & LKM_UNDER || flags & LKM_OVER){
         size += 8;
     }
 
@@ -150,8 +237,6 @@ int lkmalloc(int size, void **ptr, int flags)
 
     return 0;
 }
-
-
 
 int lkfree(void **ptr, int flags)
 {
@@ -207,7 +292,6 @@ int lkfree(void **ptr, int flags)
     //int found = 0;
     char *t1, *item;
     int size = 0;
-    int check_unknown = 0;
     //if(ret == 0 || ret == 36 )
     for(int i = 1; i < len_reports; i++){
         t1 = strdup(reports[i]);
@@ -298,19 +382,6 @@ int lkfree(void **ptr, int flags)
                 exit(1);
             }
         }
-        // else if(ret == 46/*  || ret == 36 */)
-        // {
-        //     // snprintf(address,sizeof(address), "MEMORY LEAK-tried to free an allocation with a ptr in the middle of an allocated block.");
-        //     //snprintf(address,sizeof(address), "EINVAL,1,%s,%s,%d,%s,%p,%d,%s,()",file_name,fxn_name,line_num, time,*ptr, ret, hex);
-        //     snprintf(address,sizeof(address), "MEMORY LEAK-tried to free an allocation with a ptr in the middle of an allocated block.\
-        //     \n  -->  1,%s,%s,%d,%s,%p,%d,%s,()",file_name,fxn_name,line_num, time,*ptr, ret, hex);
-        //     memcpy(reports[len_reports++], address, sizeof(address));
-        //     if(flags & LKF_ERROR)
-        //     {
-        //         fprintf(stderr,"LKF_ERROR - EINVAL. Exiting. (1)\n");
-        //         exit(1);
-        //     }
-        // }
         else if(ret == 36){
             ret = EINVAL;
             errno = EINVAL;
@@ -345,12 +416,12 @@ int lkfree(void **ptr, int flags)
         else{
             printf("\nother error. Handle this\n");
         }
+
+        return ret;
 }
 
 int lkreport(int fd, int flags)
 {
-
-
     //dprintf - prints to file descriptor instead of i/o stream
     if(!flags & !LKR_NONE)
     {
@@ -368,7 +439,6 @@ int lkreport(int fd, int flags)
             dprintf(fd, "   LKR_SERIOUS     \n");
             int malloc_leaks[len_reports];
             int num_malloc_leaks = findleaks(malloc_leaks);
-            //printf("num_malloc_leaks: %d\n", num_malloc_leaks);
             for(int i = 0; i < num_malloc_leaks; i++)
             {
                 dprintf(fd, "%s\n", reports[malloc_leaks[i]]);
@@ -377,65 +447,26 @@ int lkreport(int fd, int flags)
         }
         if(flags & LKR_MATCH)
         {
-            dprintf(fd, "   LKR_MATCH     \n");
-            char *t1, *item, *current = NULL;
-            int index1 = -1;
-            
-            for(int i = 1; i < len_reports; i++){
-               // printf("i:%d\n",i);
-                //printf("r[%d]:%s\n",i,reports[i]);
-                t1 = strdup(reports[i]);
-                item = strtok(t1, ",");
-                if(strcmp("0", item) == 0 && current == NULL)
-                {
-                    for(int k = 1; k < 8; k++){
-                        item = strtok(NULL, ",");
-                        //printf("item:%s\n", item);
-                        }
-                    current = strdup(item);
-                    index1 = i;
-                    
-                   // printf("rrrrr[%d]:%s\n",i,item);
-                   // printf("searching for memaddy: %s\n", current);
-                    // free(t1);
-                    // continue;
-                }
-                if(strcmp("1", item) == 0 && current != NULL)
-                {
-                    for(int k = 1; k < 6; k++)
-                        item = strtok(NULL, ",");
-                    //printf("comparing to item2: %s current: %s\n",item, current);
-                    if(strcmp(item,current) == 0)
-                    {
-                        //printf("found a match.\n");
-                        dprintf(fd, "%s\n", reports[index1]);
-                        dprintf(fd, "%s\n", reports[i]);
-                        free(current);
-                        current = NULL;
-                    }
-                    
+             dprintf(fd, "   LKR_MATCH     \n");
+             int matches[len_reports];
+             int num_matches = test3(matches);
+             for(int i = 0; i < num_matches; i++)
+             {
+                 dprintf(fd, "%s\n", reports[matches[i]]);
+             }
 
-                }
-                free(t1);
-                
-                
-            }
-            if(current != NULL)
-            {
-                free(current);
-            }
+        
+
         }
+
+        
         dprintf(fd, "\n   All    \n");
         for(int i = 0; i < len_reports; i++)
         {
             dprintf(fd, "%s\n", reports[i]);
             free(reports[i]);
         }
-        
-        
     }
-
     free(reports);
     return 0;
-
 }
