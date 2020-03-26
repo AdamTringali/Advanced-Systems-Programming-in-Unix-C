@@ -5,6 +5,7 @@
 #include <string.h>
 #include <errno.h>
 
+
 char** reports;
 int len_reports;
 char* file_name;

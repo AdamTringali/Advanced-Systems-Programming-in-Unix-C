@@ -14,5 +14,8 @@ main2.o: main2.c
 valgrind:
 	valgrind --show-leak-kinds=all --leak-check=full ./a
 
+tests: a
+	sh shell_scripts/test01.sh
+
 clean: 
 	rm *.o a

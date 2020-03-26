@@ -3,4 +3,14 @@ Empty README for HW2
 Having trouble with error when:
     malloc -> free -> malloc (same address) -> modify memory address -> free
 
+ERROR with lkreports ->
+    malloc b1 -> malloc b2 -> free b2 -> modify b1 -> free b1
+    LKR_DOUBLE_FREE
     
+
+What does the lkreport look like for:
+    LKF_APPROK
+
+
+MAKE DEPEND?
+ARCHIVE FILE? lkmalloc.a
