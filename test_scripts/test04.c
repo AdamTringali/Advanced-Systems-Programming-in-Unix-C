@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <unistd.h>
-#include "header.h"
+#include "../header.h"
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
@@ -17,18 +17,17 @@ int main(int argc, char** argv)
 
     create_first_csv();
 
-    on_exit((void*)lkreport,(void*)0xff);
+    on_exit((void*)lkreport,(void*)0x0);
 
     log_info(file_name, fxn_name, line_num);
-    mallocVal = lkmalloc(20, &buf, 0x2);
+    mallocVal = lkmalloc(10, &buf, 0x1);
     if(mallocVal < 0){
         printf("MallocVal error. Exiting.\n");
         exit(1);
     }
 
-    buf += 1;
     log_info(file_name, fxn_name, line_num);
-    lkfree(&buf, 0x0);
+    lkfree(&buf, 0x1);
 
     exit(STDIN_FILENO);
 

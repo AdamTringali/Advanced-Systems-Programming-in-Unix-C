@@ -1,12 +1,11 @@
 CC=gcc
-CFLAGS = -g
-# -g -Wall -Werror -O2 -DDEBUG1 -DEXTRACREDIT
+CFLAGS = -g -Wall -Werror -O2 -DDEBUG1 -DEXTRACREDIT
 
-a: main2.o LKmalloc.o
-	gcc main2.o LKmalloc.o -o a
+a: main2.o lkmalloc.o
+	gcc main2.o lkmalloc.o -o a
 
 a.o: main2.c header.h
-	$(CC) $(CFLAGS) -c LKmalloc.c
+	$(CC) $(CFLAGS) -c lkmalloc.c
 
 main2.o: main2.c
 	$(CC) $(CFLAGS) -c main2.c 

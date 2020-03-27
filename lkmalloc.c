@@ -19,9 +19,13 @@ int len_reports;
 char* file_name;
 char *fxn_name;
 int line_num;
+int under_malloc[200];
+int und_malloc_count;
 
 void create_first_csv()
 {
+    und_malloc_count = 0;
+    //under_malloc[200];
     reports = malloc(200 * sizeof(char*));
     len_reports = 0;
     int strlen = 500;
@@ -43,6 +47,49 @@ int get_num_mallocs()
     }
 
     //printf("num_mallocs: %d\n", count);
+    return count;
+}
+
+int find_serious_leaks(int list[])
+{
+    int count = 0;
+    char *t1, *item = NULL;
+
+    for(int i = 1; i < len_reports; i++)
+    {
+        char *addy;
+        int difference;
+        t1=strdup(reports[i]);
+        item = strtok(t1, ",");
+        if(strcmp("1", item) == 0 /* == 0 && strstr(reports[i], ",56,") != NULL */)
+        {
+            for(int k = 0; k < 4; k++)
+                item = strtok(NULL, ",");
+            addy = strtok(NULL, ",");
+            item = strtok(NULL, ",");
+            difference = atoi(item) - 100;
+            printf("difference:%d\n", difference);
+
+            printf("addy:%s\n", addy);
+            for(int z = 0; z < len_reports; z++)
+            {
+                t1=strdup(reports[z]);
+                item = strtok(t1, ",");
+                if(strcmp("0", item) == 0)
+                {
+                    char hex[20];
+                    for(int k = 0; k < 7; k++)
+                        item = strtok(NULL, ",");
+            
+                    printf("item:%s\n",hex );
+                    printf("in here\n");
+                    //if(strcmp(addy, ))
+                }
+            }
+            //list[count++] = i;
+        }
+        free(t1);
+    }
     return count;
 }
 
@@ -256,14 +303,14 @@ int lkmalloc(int size, void **ptr, int flags)
     // LKM_INIT - initalize memory being allocated to 0
     if(flags & LKM_INIT)
     {
-        printf("init_flag\n");
-        memset(&ptr, 0, size);
+        //printf("init_flag\n");
+        memset(*ptr, 0, size);
     }
 
     // LKM_OVER - alloc. 8 more bytes and write 0x5a in upper 8 
     if(flags & LKM_OVER)
     {
-        printf("in lkm over\n");
+        //printf("in lkm over\n");
         *ptr = *ptr + (size - 8);
         memset(*ptr, 0x5a, 8);
         *ptr = *ptr - (size-8);
@@ -272,9 +319,11 @@ int lkmalloc(int size, void **ptr, int flags)
     // LKM_UNDER - alloc. 8 more bytes and write 0x6b in lower 8
     if(flags & LKM_UNDER)
     {
-        printf("in lkm under\n");
+        //printf("in lkm under\n");
+        under_malloc[und_malloc_count++] = (len_reports);
         memset(*ptr, 0x6b, 8);
         *ptr = *ptr + 8;
+        //printf("under_malloc:%d\n", under_malloc[und_malloc_count-1]);
     }
 
 
@@ -311,6 +360,15 @@ int lkfree(void **ptr, int flags)
     }
     snprintf(address, sizeof(address), "%p", *ptr);
 
+    // for(int i = 0; i < und_malloc_count; i++)
+    // {
+    //     printf("in here23 :) %s\n", address);
+    //     printf("testing rpt: %s\n", reports[len_reports-1]);
+
+    //     if(under_malloc[i] == len_reports){
+    //         printf("in here :)\n");
+    //     }
+    // }
 
     //LKF_REG - free only if the ptr passed was exactly as alloc
     // if(!flags & !LKF_REG)
@@ -385,7 +443,7 @@ int lkfree(void **ptr, int flags)
                         }
                         else{
                             //SHOULD BE FIXING MEMORY ADDRES BUT LKF_APPROX FLAG IS NOT ENABLED.
-                            ret = 56;
+                            ret = 100 + (ptr_address - real_address);
                         }
                     }
                 }
@@ -405,8 +463,22 @@ int lkfree(void **ptr, int flags)
 
 
     if(ret == 0){
+        int extrafree = 0;
+        for(int i = 0; i < und_malloc_count; i++)
+        {
+            //printf("und c: %s\n", address);
+            if(strstr(reports[under_malloc[i]], address) != NULL)
+            {
+                extrafree = 1;
+                //printf("found.\n");
+            }
+        }
         snprintf(address,sizeof(address), "1,%s,%s,%d,%ld.%ld,%p,%d,%s,()",file_name,fxn_name,line_num, tv.tv_sec,tv.tv_usec,*ptr, ret, hex);
         memcpy(reports[len_reports++], address, sizeof(address));
+   
+        if(extrafree == 1)
+            *ptr = *ptr - 8;
+ 
         free(*ptr);
     }
     else //if (ret == 56 || ret == 50)
@@ -418,10 +490,13 @@ int lkfree(void **ptr, int flags)
             snprintf(address,sizeof(address), "1,%s,%s,%d,%ld.%ld,%s,%d,%s,()",file_name,fxn_name,line_num, tv.tv_sec,tv.tv_usec,passed_addr, ret, hex);
             memcpy(reports[len_reports++], address, sizeof(address));
             free(passed_addr);
+            if(strstr(reports[len_reports-1], address)){
+            *ptr = *ptr - 8;
+            }
             free(*ptr);
             ret = 0;
         }
-        else if(ret == 46 || ret == 56)
+        else if(ret == 46 || ret > 100)
         {
            // snprintf(address,sizeof(address), "MEMORY LEAK-tried to free an allocation with a ptr in the middle of an allocated block.");
              snprintf(address,sizeof(address), "1,%s,%s,%d,%ld.%ld,%p,%d,%s,()",file_name,fxn_name,line_num, tv.tv_sec,tv.tv_usec,*ptr, ret, hex);
@@ -524,7 +599,7 @@ int lkreport(int fd, int flags)
         {
             dprintf(fd, "   LKR_SERIOUS     \n");
             // int malloc_leaks[len_reports];
-            // int num_malloc_leaks = findleaks(malloc_leaks);
+            // int num_malloc_leaks = find_serious_leaks(malloc_leaks);
             // for(int i = 0; i < num_malloc_leaks; i++)
             //     dprintf(fd, "%s\n", reports[malloc_leaks[i]]);
         }
