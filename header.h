@@ -1,5 +1,3 @@
-
-
 int lkreport(int fd, __u_int flags);
 int lkmalloc(__u_int size, void **ptr, __u_int flags);
 int lkfree(void **pts, __u_int flags);

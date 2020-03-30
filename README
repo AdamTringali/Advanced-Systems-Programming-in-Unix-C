@@ -7,9 +7,10 @@ lkmalloc function has following flags
     -LKM_REG 0x0 - allocate without any of special protections
     -LKM_INIT 0x1 - initalize memory being allocated to 0s 
     -LKM_OVER 0x2 - allocate 8 more bytes of memory after requested size
+    -LKM_UNDER 0x4 - allocate 8 more bytes of memory before requested size
 
 lkfree function has following flags
-    - LKF_REG 0x0: free only if passed ptr address exactly matches a malloc record
+    -LKF_REG 0x0: free only if passed ptr address exactly matches a malloc record
     -LKF_APPROX 0x1: free an alloc. even if ptr address is in middle of alloc. block
     -LKF_WARN 0x2: print to stderr if freeing with LKF_APPROX
     -LKF_UNKNOWN 0x4: print to stderr if asked to free a ptr address not in malloc records
@@ -30,11 +31,9 @@ test_scripts folder contain several small programs that test
 different combinations of flags for lkmalloc,lkfree and lkreport.
 
 to run tests do: make tests
+
+
 to run with driver program (program that demonstrates each of 
 the flags and each of the "bad things" this library catches 
 through the tests):
     -make
-    -./mymalloc
-
-MAKE DEPEND?
-ARCHIVE FILE? lkmalloc.a
