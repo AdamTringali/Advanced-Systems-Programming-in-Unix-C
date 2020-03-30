@@ -59,3 +59,31 @@ if test $? = 0; then
 else
     echo this test FAILED
 fi
+
+echo
+echo ~~~~~~~~~~~~~~~~~~~~~~~~test5.c~~~~~~~~~~~~~~~~
+echo TESTS MALLOC LKM_OVER 0x2 and all lkreport flags
+echo
+#in shell scrips, the last exit stat of a pgrm is recorded.
+#in variable $?
+gcc -o test5 test_scripts/test5.c lkmalloc.c
+./test5 #&>/dev/null 
+if test $? = 0; then
+    echo this test is OK
+else
+    echo this test FAILED
+fi
+
+echo
+echo ~~~~~~~~~~~~~~~~~~~~~~~~test6.c~~~~~~~~~~~~~~~~
+echo TESTS MALLOC WITH LKM_UNDER WITH LKR_MATCHES FLAG
+echo
+#in shell scrips, the last exit stat of a pgrm is recorded.
+#in variable $?
+gcc -o test6 test_scripts/test6.c lkmalloc.c
+./test6 #&>/dev/null 
+if test $? = 0; then
+    echo this test is OK
+else
+    echo this test FAILED
+fi

@@ -1,6 +1,8 @@
-int lkreport(int fd, int flags);
-int lkmalloc(int size, void **ptr, int flags);
-int lkfree(void **pts, int flags);
+
+
+int lkreport(int fd, __u_int flags);
+int lkmalloc(__u_int size, void **ptr, __u_int flags);
+int lkfree(void **pts, __u_int flags);
 void create_first_csv();
 void log_a(char* a, char* b, int c);
 

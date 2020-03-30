@@ -1,6 +1,16 @@
 
 
 //TESTS MALLOC WITH LKM_UNDER WITH LKR_MATCHES FLAG
+#include <stdio.h>
+#include <unistd.h>
+#include "../header.h"
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
+
+extern char* file_name;
+extern int line_num;
+extern const char* fxn_name;
 
 int main(int argc, char** argv)
 {  

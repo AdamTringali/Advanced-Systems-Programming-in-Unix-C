@@ -12,7 +12,7 @@ extern const char* fxn_name;
 int main(int argc, char** argv)
 {  
     
-    int freeVal, mallocVal;
+    int mallocVal;
     void* buf = NULL;
 
     create_first_csv();
@@ -27,7 +27,7 @@ int main(int argc, char** argv)
     }
 
     log_info(file_name, fxn_name, line_num);
-    freeVal = lkfree(&buf, 0x0);
+    lkfree(&buf, 0x0);
 
 
     exit(STDIN_FILENO);
