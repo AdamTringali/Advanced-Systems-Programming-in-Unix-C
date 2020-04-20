@@ -1,0 +1,3 @@
+mypassword
+useless line 1
+useless line 2
