@@ -1,0 +1,65 @@
+
+# this file contains example contains for the client to run
+
+# list will display all jobs and their job information (status,command,pid,etc)
+
+list
+
+# example of adding a job of program du with arguments -sh and /usr (if du completes too fast, use sleep)
+# syntax for argv is : argv=program,arg1,arg2
+# syntax for envp is : envp=variable-value,variable2-value2
+
+add argv=du,-sh,/usr envp=myVar-12,myVar2-2121
+
+list
+
+# if the du program is still running, lets try to suspend it (expecting the job number to be 1)
+
+susp 1
+
+list
+
+# lets resume the du program using the continue command
+
+cont 1
+
+list
+
+# lets run du program again and kill it instead
+
+add argv=du,-sh,/usr
+
+list
+
+kill 2
+
+list
+
+# we should see job 2 is stopped
+
+# lets test other programs
+
+add argv=ps,-l
+add argv=ls,-l
+add argv=cd,123
+add argv=ps,aux
+
+# now lets test to run concurrent jobs
+
+add argv=sleep,100
+add argv=sleep,100
+add argv=sleep,100
+add argv=sleep,100
+
+# the last sleep program should not be unable to added
+
+# lets change priority of sleep program
+
+nice (insert job num of sleep program) 10
+
+list
+
+# verifies that priority changed
+
+add argv=ps,-l
+
